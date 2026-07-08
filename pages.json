@@ -1,0 +1,69 @@
+{
+	"pages": [
+		{
+			"path": "pages/launch/launch",
+			"style": {
+				"navigationBarTitleText": "发射",
+				"navigationStyle": "custom",
+				"backgroundColor": "#050514"
+			}
+		},
+		{
+			"path": "pages/wander/wander",
+			"style": {
+				"navigationBarTitleText": "漫游",
+				"navigationStyle": "custom",
+				"backgroundColor": "#050514"
+			}
+		},
+		{
+			"path": "pages/earth/earth",
+			"style": {
+				"navigationBarTitleText": "地球",
+				"navigationStyle": "custom",
+				"backgroundColor": "#050514"
+			}
+		},
+		{
+			"path": "pages/listen/listen",
+			"style": {
+				"navigationBarTitleText": "收听",
+				"navigationStyle": "custom",
+				"backgroundColor": "#050514"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "STARLETTER",
+		"navigationBarBackgroundColor": "#050514",
+		"backgroundColor": "#050514",
+		"navigationStyle": "custom"
+	},
+	"tabBar": {
+		"custom": true,
+		"color": "#5a5a7a",
+		"selectedColor": "#00e5ff",
+		"backgroundColor": "rgba(5,5,20,0.92)",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/launch/launch",
+				"text": "发射"
+			},
+			{
+				"pagePath": "pages/wander/wander",
+				"text": "漫游"
+			},
+			{
+				"pagePath": "pages/listen/listen",
+				"text": "信号"
+			},
+			{
+				"pagePath": "pages/earth/earth",
+				"text": "地球"
+			}
+		]
+	},
+	"uniIdRouter": {}
+}
