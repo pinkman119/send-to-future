@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>STARLETTER 星语 — 寄给未来的信</title>
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg-deep:#050514; --bg-mid:#0a0a24; --bg-card:rgba(12,12,36,.75);
+  --glass:rgba(255,255,255,.04); --glass-bd:rgba(255,255,255,.08);
+  --glass-hover:rgba(255,255,255,.07);
+  --text-1:#f0f0ff; --text-2:#9a9ac0; --text-3:#5a5a7a;
+  --cyan:#00e5ff; --blue:#4facfe; --purple:#a855f7; --gold:#ffd56b; --pink:#ff6b9d;
+  --signal-glow:#ff6b9d; --signal-bright:#ff3b6b;
+  --radius:20px;
+}
+html,body { height:100%; overflow:hidden; }
+body {
+  font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg-deep); color:var(--text-1);
+  font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== Canvas Starfield ===== */
+#starfield { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* ===== App Shell ===== */
+#app { position:relative; z-index:1; height:100dvh; display:flex; flex-direction:column; }
+
+/* ===== Pages ===== */
+.page { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; display:none; }
+.page.active { display:block; }
+.page { animation:pageIn .4s ease; }
+@keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===== Tab Bar ===== */
+.tabbar {
+  position:relative; z-index:50;
+  display:flex; height:64px; padding-bottom:env(safe-area-inset-bottom);
+  background:rgba(5,5,20,.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--glass-bd);
+}
+.tab {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; cursor:pointer; transition:all .25s; position:relative;
+  color:var(--text-3); font-size:11px; font-weight:500; letter-spacing:.5px;
+}
+.tab-icon { width:24px; height:24px; transition:all .3s cubic-bezier(.34,1.56,.64,1); }
+.tab.active { color:var(--cyan); }
+.tab.active .tab-icon { transform:translateY(-2px) scale(1.15); filter:drop-shadow(0 0 6px rgba(0,229,255,.5)); }
+.tab.active::before {
+  content:''; position:absolute; top:0; width:24px; height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  border-radius:2px;
+}
+
+/* ===== Launch Page ===== */
+.launch-page { padding:0 20px 40px; }
+.launch-header { text-align:center; padding:60px 0 28px; }
+.launch-logo {
+  font-size:13px; font-weight:700; letter-spacing:4px;
+  background:linear-gradient(135deg,var(--cyan),var(--gold));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.launch-tagline { font-size:11px; color:var(--text-3); margin-top:4px; letter-spacing:2px; }
+.launch-title { font-size:28px; font-weight:800; margin-top:24px; letter-spacing:-.5px; }
+.launch-title .grad {
+  background:linear-gradient(135deg,var(--cyan) 0%,var(--purple) 50%,var(--gold) 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.launch-sub { font-size:13px; color:var(--text-2); margin-top:10px; line-height:1.6; }
+
+/* Letter Card */
+.letter-card {
+  background:var(--bg-card); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(0,229,255,.12); border-radius:var(--radius);
+  overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,.3);
+  margin-top:24px;
+}
+.letter-head { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; }
+.letter-from { font-size:13px; color:var(--text-2); }
+.letter-from .cyan { color:var(--cyan); font-weight:600; }
+.letter-date { font-size:12px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.letter-body { padding:0 18px 8px; }
+.letter-to { font-size:12px; color:var(--text-3); margin-bottom:10px; }
+.letter-to .gold { color:var(--gold); font-weight:600; }
+.letter-input {
+  width:100%; min-height:200px; background:transparent; border:none; outline:none; resize:none;
+  color:var(--text-1); font-size:15px; line-height:1.8; font-family:inherit;
+}
+.letter-input::placeholder { color:var(--text-3); }
+.letter-foot { display:flex; justify-content:flex-end; padding:8px 18px 14px; border-top:1px solid var(--glass-bd); }
+.char-count { font-size:12px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.char-count .cyan { color:var(--cyan); }
+
+/* Keyword tag input */
+.keyword-section { margin-top:16px; }
+.keyword-label { font-size:12px; color:var(--text-2); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.keyword-label .icon { font-size:14px; }
+.keyword-input-wrap { display:flex; gap:8px; align-items:center; }
+.keyword-input {
+  flex:1; padding:10px 14px; background:var(--glass); border:1px solid var(--glass-bd);
+  border-radius:10px; color:var(--text-1); font-size:14px; font-family:inherit; outline:none;
+  transition:all .3s;
+}
+.keyword-input::placeholder { color:var(--text-3); }
+.keyword-input:focus { border-color:var(--cyan); background:rgba(0,229,255,.04); }
+
+/* Encrypted content display */
+.encrypted-preview {
+  display:flex; align-items:center; gap:8px; padding:10px 14px;
+  background:rgba(168,85,247,.06); border:1px solid rgba(168,85,247,.15);
+  border-radius:10px; font-size:13px;
+}
+.encrypted-lock { font-size:16px; flex-shrink:0; }
+.encrypted-text {
+  color:var(--text-3); font-family:'SF Mono',monospace; letter-spacing:1px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.encrypted-text .block {
+  display:inline-block; width:7px; height:7px; margin:0 1px;
+  background:var(--text-3); border-radius:2px; opacity:.4;
+}
+
+/* Keyword tag on sent card */
+.keyword-tag {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 10px; border-radius:100px;
+  background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(0,229,255,.1));
+  border:1px solid rgba(168,85,247,.2);
+  font-size:11px; font-weight:600; color:var(--purple);
+  max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.keyword-tag .tag-icon { font-size:10px; }
+
+/* Section */
+.section { margin-top:32px; }
+.section-label { font-size:11px; color:var(--cyan); letter-spacing:3px; font-weight:600; }
+.section-title { font-size:18px; font-weight:700; margin-top:6px; }
+.section-desc { font-size:12px; color:var(--text-2); margin-top:4px; }
+
+/* Section Title Row (with toggle) */
+.section-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px; }
+.section-title-row .section-title { margin-top:0; }
+
+/* Visibility Toggle */
+.vis-toggle-wrap { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.vis-state { font-size:13px; font-weight:600; min-width:28px; text-align:center; transition:color .35s; }
+.vis-state.public { color:var(--cyan); }
+.vis-state.encrypted { color:var(--purple); }
+.vis-toggle {
+  position:relative; width:54px; height:28px; border-radius:100px; cursor:pointer; flex-shrink:0;
+  background:rgba(0,229,255,.12); border:1px solid rgba(0,229,255,.3);
+  transition:all .35s cubic-bezier(.16,1,.3,1);
+}
+.vis-toggle.encrypted { background:rgba(168,85,247,.15); border-color:rgba(168,85,247,.4); }
+.vis-knob {
+  position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--blue));
+  box-shadow:0 0 10px rgba(0,229,255,.5);
+  transition:all .35s cubic-bezier(.16,1,.3,1);
+}
+.vis-toggle.encrypted .vis-knob {
+  left:28px; background:linear-gradient(135deg,var(--purple),var(--pink));
+  box-shadow:0 0 10px rgba(168,85,247,.5);
+}
+.vis-toggle:active .vis-knob { transform:scale(1.15); }
+
+/* Delivery Cards */
+.delivery-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+.delivery-card {
+  position:relative; display:flex; align-items:center; gap:14px; padding:16px;
+  background:var(--glass); border:2px solid var(--glass-bd); border-radius:14px;
+  cursor:pointer; transition:all .3s cubic-bezier(.16,1,.3,1);
+}
+.delivery-card.selected { border-color:var(--cyan); background:rgba(0,229,255,.04); }
+.delivery-card:active { transform:scale(.98); }
+.delivery-icon { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:22px; flex-shrink:0; }
+.delivery-info { flex:1; }
+.delivery-name { font-size:15px; font-weight:600; }
+.delivery-desc { font-size:12px; color:var(--text-2); margin-top:2px; }
+.delivery-check {
+  position:absolute; top:14px; right:14px; width:22px; height:22px;
+  display:flex; align-items:center; justify-content:center; border-radius:50%;
+  border:2px solid var(--glass-bd); background:var(--glass); transition:all .3s; font-size:12px;
+}
+.delivery-check.active { border-color:var(--cyan); background:var(--cyan); color:#000; }
+
+/* Delivery Card - Unbreakable Vow */
+.delivery-card-vow {
+  border-color:rgba(255,107,157,.2);
+  background:linear-gradient(135deg,rgba(255,107,157,.04),rgba(168,85,247,.04));
+}
+.delivery-card-vow.selected {
+  border-color:var(--pink);
+  background:rgba(255,107,157,.08);
+  box-shadow:0 0 24px rgba(255,107,157,.15);
+}
+.delivery-card-vow.selected .delivery-check { border-color:var(--pink); background:var(--pink); color:#fff; }
+
+/* Vow Form */
+.vow-form {
+  margin-top:16px; padding:18px;
+  background:linear-gradient(135deg,rgba(255,107,157,.06),rgba(168,85,247,.06));
+  border:1px solid rgba(255,107,157,.15); border-radius:16px;
+  animation:pageIn .35s ease;
+}
+.vow-form-header { display:flex; gap:12px; margin-bottom:16px; }
+.vow-form-icon { font-size:28px; flex-shrink:0; }
+.vow-form-title { font-size:16px; font-weight:700; }
+.vow-form-desc { font-size:12px; color:var(--text-2); margin-top:3px; line-height:1.6; }
+.vow-form-fields { display:flex; flex-direction:column; gap:14px; }
+.vow-field { display:flex; flex-direction:column; gap:6px; }
+.vow-field label { font-size:12px; font-weight:600; color:var(--text-1); }
+/* (vow-input styles removed — replaced by coord-popup-input) */
+.vow-add-contact {
+  margin-top:14px; width:100%; padding:11px; border:1px dashed rgba(255,107,157,.3);
+  border-radius:10px; background:transparent; color:var(--pink); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .25s;
+}
+.vow-add-contact:active { transform:scale(.97); }
+.vow-extra-contact { display:flex; gap:8px; align-items:flex-start; margin-top:14px; }
+.vow-extra-contact .vow-field { flex:1; }
+.vow-extra-contact .vow-remove {
+  width:36px; height:36px; border-radius:10px; border:1px solid var(--glass-bd);
+  background:var(--glass); color:var(--text-3); font-size:15px; cursor:pointer; flex-shrink:0;
+  margin-top:20px; transition:all .25s;
+}
+.vow-extra-contact .vow-remove:hover { color:var(--signal-bright); border-color:var(--signal-bright); }
+
+/* ===== Coordinate Popup (发射时弹窗) ===== */
+.coord-popup-overlay {
+  position:fixed; inset:0; z-index:99998;
+  background:rgba(0,0,0,.65); backdrop-filter:blur(8px);
+  display:flex; align-items:flex-end; justify-content:center;
+  animation:pageIn .3s ease;
+}
+.coord-popup {
+  width:100%; max-width:420px; max-height:85vh; overflow-y:auto;
+  background:linear-gradient(180deg,var(--bg-mid) 0%,var(--bg-dark) 100%);
+  border:1px solid var(--glass-bd); border-radius:24px 24px 0 0;
+  padding:24px 20px calc(20px + env(safe-area-inset-bottom));
+  animation:coordSlideUp .35s cubic-bezier(.16,1,.3,1);
+}
+.coord-popup::-webkit-scrollbar { width:0; }
+@keyframes coordSlideUp {
+  from { transform:translateY(100%); opacity:0; }
+  to   { transform:translateY(0); opacity:1; }
+}
+.coord-popup-header { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+.coord-popup-icon {
+  width:42px; height:42px; border-radius:12px; flex-shrink:0;
+  background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(18,183,245,.12));
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+  border:1px solid rgba(0,229,255,.15);
+}
+.coord-popup-title { font-size:20px; font-weight:700; }
+.coord-popup-sub { font-size:12px; color:var(--text-2); margin-top:2px; }
+.coord-popup-close {
+  margin-left:auto; width:32px; height:32px; border-radius:10px;
+  border:1px solid var(--glass-bd); background:var(--glass);
+  color:var(--text-2); font-size:16px; cursor:pointer; flex-shrink:0;
+  transition:all .25s;
+}
+.coord-popup-close:hover { color:var(--signal-bright); border-color:var(--signal-bright); }
+
+/* Channel badge inside popup */
+.coord-channel-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600;
+  margin:16px 0 4px;
+}
+.coord-channel-badge.mail { background:rgba(168,85,247,.1); color:var(--purple); }
+.coord-channel-badge.qqmail { background:rgba(18,183,245,.1); color:var(--blue); }
+.coord-channel-badge.sms { background:rgba(255,213,107,.1); color:var(--gold); }
+.coord-channel-badge.unbreakable { background:rgba(255,107,157,.1); color:var(--pink); }
+
+/* Saved coords picker */
+.coord-saved-section { margin:16px 0 8px; }
+.coord-saved-label { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:10px; display:flex; align-items:center; gap:4px; }
+.coord-saved-list { display:flex; flex-wrap:wrap; gap:8px; }
+.coord-saved-chip {
+  display:flex; align-items:center; gap:6px; padding:8px 12px;
+  border-radius:100px; border:1px solid var(--glass-bd); background:var(--glass);
+  font-size:13px; cursor:pointer; transition:all .25s; max-width:100%;
+}
+.coord-saved-chip:hover { border-color:var(--cyan); background:rgba(0,229,255,.06); }
+.coord-saved-chip .chip-icon { font-size:15px; flex-shrink:0; }
+.coord-saved-chip .chip-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; }
+.coord-saved-empty { font-size:12px; color:var(--text-3); padding:10px 0; }
+
+/* Coord popup fields */
+.coord-popup-fields { display:flex; flex-direction:column; gap:14px; margin-top:16px; }
+.coord-popup-field { display:flex; flex-direction:column; gap:6px; }
+.coord-popup-field label { font-size:12px; font-weight:600; color:var(--text-1); display:flex; align-items:center; gap:4px; }
+.coord-popup-field .required { color:var(--pink); font-size:10px; }
+.coord-popup-input {
+  width:100%; padding:12px 14px; border-radius:12px;
+  border:1px solid var(--glass-bd); background:rgba(0,0,0,.2);
+  color:var(--text-1); font-size:14px; font-family:inherit; outline:none;
+  transition:all .25s;
+}
+.coord-popup-input:focus { border-color:var(--cyan); box-shadow:0 0 0 3px rgba(0,229,255,.1); }
+.coord-popup-input::placeholder { color:var(--text-3); }
+.coord-popup-input.unbreakable-focus:focus { border-color:var(--pink); box-shadow:0 0 0 3px rgba(255,107,157,.1); }
+
+/* Extra contact row */
+.coord-extra-row { display:flex; gap:8px; align-items:flex-start; }
+.coord-extra-row .coord-popup-field { flex:1; }
+.coord-extra-remove {
+  width:40px; height:40px; border-radius:10px; border:1px solid var(--glass-bd);
+  background:var(--glass); color:var(--text-3); font-size:15px; cursor:pointer;
+  flex-shrink:0; margin-top:22px; transition:all .25s;
+}
+.coord-extra-remove:hover { color:var(--signal-bright); border-color:var(--signal-bright); }
+
+.coord-add-extra {
+  margin-top:4px; width:100%; padding:11px;
+  border:1px dashed rgba(255,107,157,.3); border-radius:10px;
+  background:transparent; color:var(--pink); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .25s;
+}
+.coord-add-extra:active { transform:scale(.97); }
+
+/* Confirm button */
+.coord-confirm-btn {
+  margin-top:20px; width:100%; padding:14px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#fff;
+  font-size:15px; font-weight:700; cursor:pointer; transition:all .25s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.coord-confirm-btn:active { transform:scale(.97); }
+.coord-confirm-btn.unbreakable { background:linear-gradient(135deg,var(--pink),var(--purple)); }
+
+/* Time Grid */
+.time-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; }
+.time-card {
+  display:flex; flex-direction:column; align-items:center; padding:16px 4px;
+  background:var(--glass); border:2px solid var(--glass-bd); border-radius:14px;
+  cursor:pointer; transition:all .3s;
+}
+.time-card.selected { border-color:var(--gold); background:rgba(255,213,107,.06); box-shadow:0 0 20px rgba(255,213,107,.1); }
+.time-card:active { transform:scale(.95); }
+.time-num { font-size:28px; font-weight:800; line-height:1; }
+.time-num.grad { background:linear-gradient(135deg,var(--gold),var(--pink)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.time-unit { font-size:12px; color:var(--text-2); margin-top:4px; }
+.time-date { font-size:10px; color:var(--text-3); margin-top:8px; padding-top:8px; border-top:1px solid var(--glass-bd); width:100%; text-align:center; }
+
+/* Launch Button */
+.launch-btn-wrap { margin-top:36px; text-align:center; padding-bottom:20px; }
+.launch-btn {
+  width:100%; max-width:320px; padding:16px; border:none; border-radius:100px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  color:#fff; font-size:17px; font-weight:700; letter-spacing:1px; cursor:pointer;
+  box-shadow:0 0 40px rgba(0,229,255,.35),0 0 80px rgba(168,85,247,.15);
+  transition:all .3s; position:relative; overflow:hidden;
+}
+.launch-btn:active { transform:scale(.97); }
+.launch-btn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);
+  opacity:0; transition:opacity .3s;
+}
+.launch-btn:hover::before { opacity:1; }
+.launch-hint { font-size:12px; color:var(--text-3); margin-top:12px; }
+
+/* ===== Launch Animation Overlay ===== */
+.launch-overlay {
+  position:fixed; inset:0; z-index:9999; display:none;
+  align-items:center; justify-content:center; flex-direction:column;
+  background:radial-gradient(ellipse at center,rgba(10,10,36,.95) 0%,rgba(5,5,20,.98) 100%);
+}
+.launch-overlay.show { display:flex; }
+
+.flying-letter {
+  position:relative; width:220px; height:140px;
+  background:linear-gradient(135deg,rgba(12,12,36,.95),rgba(20,20,50,.95));
+  border:1px solid rgba(0,229,255,.3); border-radius:12px;
+  box-shadow:0 0 40px rgba(0,229,255,.2);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:20px; transform:scale(1);
+}
+.flying-letter::before {
+  content:''; position:absolute; top:-1px; left:50%; transform:translateX(-50%);
+  width:60px; height:30px; background:rgba(0,229,255,.15);
+  border-radius:0 0 30px 30px;
+}
+.flying-letter-icon { font-size:32px; margin-bottom:8px; }
+.flying-letter-text { font-size:12px; color:var(--text-2); text-align:center; }
+
+.flying-letter.stage-1 { animation:letterShrink .6s ease forwards; }
+@keyframes letterShrink {
+  0% { transform:scale(1); opacity:1; }
+  100% { transform:scale(.3) translateY(-100px); opacity:.8; }
+}
+.flying-letter.stage-2 { animation:letterToStar .8s ease forwards; }
+@keyframes letterToStar {
+  0% { transform:scale(.3) translateY(-100px); opacity:.8; width:220px; height:140px; border-radius:12px; }
+  50% { transform:scale(.15) translateY(-200px); opacity:1; width:40px; height:40px; border-radius:50%; box-shadow:0 0 60px rgba(0,229,255,.8); }
+  100% { transform:scale(.1) translateY(-350px); opacity:1; width:20px; height:20px; border-radius:50%; box-shadow:0 0 80px rgba(255,213,107,.8),0 0 120px rgba(0,229,255,.4); background:var(--gold); }
+}
+.flying-letter.stage-3 { animation:starFly .8s ease forwards; }
+@keyframes starFly {
+  0% { transform:scale(.1) translateY(-350px); opacity:1; }
+  100% { transform:scale(.05) translateY(-600px) translateX(50px); opacity:0; }
+}
+
+.launch-trail {
+  position:absolute; width:4px; height:0;
+  background:linear-gradient(to top,transparent,var(--cyan),var(--gold),transparent);
+  border-radius:4px; opacity:0;
+}
+.launch-trail.active { animation:trailGrow 1.6s ease forwards; }
+@keyframes trailGrow {
+  0% { height:0; opacity:0; }
+  20% { height:300px; opacity:1; }
+  100% { height:500px; opacity:0; }
+}
+
+.launch-success { opacity:0; text-align:center; transition:opacity .5s .3s; }
+.launch-success.show { opacity:1; }
+.launch-success-star { font-size:48px; animation:starPulse 2s ease-in-out infinite; }
+@keyframes starPulse { 0%,100%{transform:scale(1);filter:drop-shadow(0 0 20px var(--gold))} 50%{transform:scale(1.2);filter:drop-shadow(0 0 40px var(--gold))} }
+.launch-success-title { font-size:22px; font-weight:700; margin-top:16px; }
+.launch-success-title .grad { background:linear-gradient(135deg,var(--cyan),var(--gold)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.launch-success-desc { font-size:13px; color:var(--text-2); margin-top:8px; max-width:280px; line-height:1.7; }
+.launch-success-info { display:flex; gap:20px; margin-top:24px; padding:16px 24px; background:var(--glass); border:1px solid var(--glass-bd); border-radius:12px; }
+.launch-success-info-item { text-align:center; }
+.launch-success-info-label { font-size:10px; color:var(--text-3); margin-bottom:4px; }
+.launch-success-info-value { font-size:13px; font-weight:600; color:var(--cyan); }
+.launch-success-btn { margin-top:28px; padding:12px 36px; background:var(--glass); border:1px solid var(--glass-bd); border-radius:100px; color:var(--text-1); font-size:14px; cursor:pointer; transition:all .3s; }
+.launch-success-btn:active { transform:scale(.95); }
+
+/* ===== Wander Page ===== */
+.wander-page { height:100%; position:relative; overflow:hidden; }
+.wander-header {
+  position:absolute; top:0; left:0; right:0; z-index:10;
+  padding:60px 20px 16px;
+  background:linear-gradient(to bottom,rgba(5,5,20,.8) 0%,transparent 100%);
+}
+.wander-title-row { display:flex; align-items:center; justify-content:space-between; }
+.wander-title { font-size:22px; font-weight:800; }
+.wander-title .grad { background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.wander-refresh {
+  display:flex; align-items:center; gap:6px; padding:8px 16px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:100px;
+  color:var(--cyan); font-size:12px; cursor:pointer; transition:all .3s;
+}
+.wander-refresh:active { transform:scale(.95); }
+.wander-refresh-icon { display:inline-block; transition:transform .5s; }
+.wander-refresh.spinning .wander-refresh-icon { animation:spin360 .8s ease; }
+@keyframes spin360 { to { transform:rotate(360deg); } }
+.wander-subtitle { font-size:12px; color:var(--text-2); margin-top:6px; }
+
+.wander-sky { position:relative; width:100%; height:100%; min-height:500px; }
+
+/* Individual star letter */
+.star-letter {
+  position:absolute; cursor:pointer; transition:all .3s;
+  animation:starTwinkle 3s ease-in-out infinite;
+  display:flex; flex-direction:column; align-items:center;
+}
+.star-letter-dot {
+  width:8px; height:8px; border-radius:50%; background:#fff;
+  box-shadow:0 0 10px rgba(255,255,255,.6);
+  transition:all .3s;
+}
+.star-letter.large .star-letter-dot { width:12px; height:12px; box-shadow:0 0 16px rgba(255,213,107,.7); background:var(--gold); }
+.star-letter.medium .star-letter-dot { width:10px; height:10px; box-shadow:0 0 12px rgba(0,229,255,.6); background:var(--cyan); }
+.star-letter.small .star-letter-dot { width:6px; height:6px; box-shadow:0 0 8px rgba(255,255,255,.4); background:#e0e0ff; }
+.star-letter:hover .star-letter-dot { transform:scale(1.5); }
+.star-letter:active .star-letter-dot { transform:scale(1.3); }
+
+@keyframes starTwinkle {
+  0%,100% { opacity:.6; }
+  50% { opacity:1; }
+}
+
+/* === Strong Signal Tiers === */
+/* Tier 1: 100-999 likes — enhanced glow */
+.star-letter.signal-t1 .star-letter-dot {
+  box-shadow:0 0 20px rgba(255,107,157,.6), 0 0 40px rgba(255,107,157,.3);
+  animation:signalPulseT1 2s ease-in-out infinite;
+}
+@keyframes signalPulseT1 {
+  0%,100% { box-shadow:0 0 20px rgba(255,107,157,.6), 0 0 40px rgba(255,107,157,.3); }
+  50% { box-shadow:0 0 30px rgba(255,107,157,.8), 0 0 60px rgba(255,107,157,.4); }
+}
+/* Tier 2: 1000+ likes — maximum glow + pulsing rings */
+.star-letter.signal-t2 .star-letter-dot {
+  width:16px; height:16px;
+  background:radial-gradient(circle,#fff 0%,var(--signal-bright) 40%,var(--pink) 100%);
+  box-shadow:0 0 30px rgba(255,59,107,.9), 0 0 60px rgba(255,107,157,.5), 0 0 90px rgba(255,107,157,.2);
+  animation:signalPulseT2 1.5s ease-in-out infinite;
+}
+.star-letter.signal-t2::before {
+  content:''; position:absolute; top:50%; left:50%;
+  width:40px; height:40px; border-radius:50%;
+  border:1px solid rgba(255,107,157,.3);
+  transform:translate(-50%,-50%);
+  animation:signalRing 2s ease-out infinite;
+}
+.star-letter.signal-t2::after {
+  content:''; position:absolute; top:50%; left:50%;
+  width:40px; height:40px; border-radius:50%;
+  border:1px solid rgba(255,107,157,.2);
+  transform:translate(-50%,-50%);
+  animation:signalRing 2s ease-out infinite .7s;
+}
+@keyframes signalPulseT2 {
+  0%,100% { transform:scale(1); }
+  50% { transform:scale(1.3); }
+}
+@keyframes signalRing {
+  0% { width:16px; height:16px; opacity:.8; }
+  100% { width:60px; height:60px; opacity:0; }
+}
+
+/* Strong signal badge (appears on hover/touch) */
+.signal-badge {
+  position:absolute; top:-28px; left:50%; transform:translateX(-50%);
+  white-space:nowrap; padding:3px 10px;
+  background:linear-gradient(135deg,var(--signal-bright),var(--pink));
+  border-radius:100px; font-size:10px; font-weight:700; color:#fff;
+  letter-spacing:1px; pointer-events:none;
+  opacity:0; transition:opacity .3s;
+  box-shadow:0 2px 12px rgba(255,59,107,.4);
+}
+.star-letter.signal-t1:hover .signal-badge,
+.star-letter.signal-t2:hover .signal-badge,
+.star-letter.signal-t1 .signal-badge.show,
+.star-letter.signal-t2 .signal-badge.show {
+  opacity:1;
+}
+
+/* Constellation lines */
+.constellation-svg { position:absolute; inset:0; pointer-events:none; z-index:1; }
+.constellation-svg line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 1.2s ease forwards;
+}
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+/* Constellation name badge */
+.constellation-name {
+  position:absolute; top:130px; left:50%; transform:translateX(-50%);
+  z-index:5; text-align:center; pointer-events:none;
+  opacity:0; animation:nameFadeIn 1s ease .8s forwards;
+}
+@keyframes nameFadeIn { to { opacity:1; } }
+.constellation-name-label {
+  font-size:10px; color:var(--text-3); letter-spacing:3px; text-transform:uppercase;
+}
+.constellation-name-text {
+  font-size:20px; font-weight:700; margin-top:4px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple),var(--gold));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  letter-spacing:2px;
+}
+.constellation-name-desc {
+  font-size:11px; color:var(--text-2); margin-top:4px;
+}
+
+/* ===== Letter Detail Modal ===== */
+.letter-modal-overlay {
+  position:fixed; inset:0; z-index:200; display:none;
+  align-items:center; justify-content:center; padding:24px;
+  background:rgba(5,5,20,.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  opacity:0; transition:opacity .3s;
+}
+.letter-modal-overlay.show { display:flex; opacity:1; }
+.letter-modal {
+  width:100%; max-width:380px; max-height:78vh; overflow-y:auto;
+  background:linear-gradient(135deg,rgba(12,12,36,.97),rgba(20,20,50,.97));
+  border:1px solid rgba(0,229,255,.2); border-radius:24px;
+  box-shadow:0 0 60px rgba(0,229,255,.15); padding:28px 24px 24px;
+  transform:scale(.85); transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.letter-modal-overlay.show .letter-modal { transform:scale(1); }
+
+/* Modal header: avatar + asteroid + signal badge */
+.modal-header { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+.modal-avatar {
+  width:48px; height:48px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:26px;
+  background:linear-gradient(135deg,rgba(0,229,255,.1),rgba(168,85,247,.1));
+  border:1px solid rgba(0,229,255,.2);
+}
+.modal-header-info { flex:1; min-width:0; }
+.modal-header-name { font-size:14px; font-weight:600; }
+.modal-header-asteroid { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:2px; }
+.modal-signal-tag {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:100px; font-size:10px; font-weight:700;
+  letter-spacing:.5px; white-space:nowrap;
+}
+.modal-signal-tag.t1 { background:rgba(255,107,157,.15); color:var(--pink); border:1px solid rgba(255,107,157,.3); }
+.modal-signal-tag.t2 { background:linear-gradient(135deg,var(--signal-bright),var(--pink)); color:#fff; }
+
+.modal-star-row { display:flex; justify-content:center; margin-bottom:12px; }
+.modal-star-row .modal-star { font-size:32px; animation:starPulse 2s ease-in-out infinite; }
+.modal-date { text-align:center; font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-bottom:16px; }
+.modal-divider { height:1px; background:linear-gradient(90deg,transparent,var(--glass-bd),transparent); margin:12px 0 16px; }
+.modal-content { font-size:14px; line-height:1.9; color:var(--text-1); white-space:pre-wrap; }
+
+/* Like bar */
+.modal-like-bar {
+  display:flex; align-items:center; gap:10px; margin-top:18px;
+  padding:12px 16px; background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+}
+.modal-like-count { flex:1; }
+.modal-like-num { font-size:18px; font-weight:700; }
+.modal-like-num.lit { color:var(--pink); }
+.modal-like-label { font-size:11px; color:var(--text-3); margin-top:2px; }
+
+.modal-footer { margin-top:18px; display:flex; justify-content:center; gap:12px; }
+.modal-btn { padding:10px 24px; border-radius:100px; font-size:13px; cursor:pointer; transition:all .3s; border:none; display:flex; align-items:center; gap:6px; }
+.modal-btn.close { background:var(--glass); border:1px solid var(--glass-bd); color:var(--text-2); }
+.modal-btn.light {
+  background:linear-gradient(135deg,var(--pink),var(--purple)); color:#fff;
+  box-shadow:0 4px 20px rgba(255,107,157,.3);
+}
+.modal-btn.light.lit {
+  background:linear-gradient(135deg,var(--signal-bright),var(--pink));
+  box-shadow:0 4px 20px rgba(255,59,107,.4);
+}
+.modal-btn:active { transform:scale(.95); }
+.modal-btn.light:active { transform:scale(.95); }
+/* Light burst animation */
+.light-burst {
+  position:absolute; pointer-events:none;
+  width:60px; height:60px; border-radius:50%;
+  background:radial-gradient(circle,rgba(255,107,157,.6) 0%,transparent 70%);
+  animation:burst .6s ease forwards;
+}
+@keyframes burst {
+  0% { transform:scale(0); opacity:1; }
+  100% { transform:scale(3); opacity:0; }
+}
+
+/* Empty hint */
+.wander-hint {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  text-align:center; color:var(--text-3); font-size:13px;
+  pointer-events:none; z-index:2;
+}
+.wander-hint-icon { font-size:32px; margin-bottom:8px; opacity:.5; }
+
+/* ===== Earth Page ===== */
+.earth-page { padding:0 20px 40px; }
+.earth-header { text-align:center; padding:56px 0 24px; }
+.earth-avatar-wrap {
+  position:relative; width:80px; height:80px; margin:0 auto 14px;
+}
+.earth-avatar {
+  width:80px; height:80px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:40px;
+  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  border:2px solid rgba(0,229,255,.2);
+  box-shadow:0 0 30px rgba(0,229,255,.15);
+}
+.earth-avatar-ring {
+  position:absolute; inset:-6px; border-radius:50%;
+  border:1px solid rgba(0,229,255,.15);
+  animation:earthRingRotate 8s linear infinite;
+}
+.earth-avatar-ring::before {
+  content:''; position:absolute; top:-3px; left:50%; transform:translateX(-50%);
+  width:6px; height:6px; border-radius:50%; background:var(--cyan);
+  box-shadow:0 0 8px var(--cyan);
+}
+@keyframes earthRingRotate { to { transform:rotate(360deg); } }
+.earth-name { font-size:20px; font-weight:700; }
+.earth-name .grad { background:linear-gradient(135deg,var(--cyan),var(--gold)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.earth-id { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:4px; }
+
+/* Stats row */
+.earth-stats { display:flex; gap:12px; margin-top:20px; }
+.earth-stat {
+  flex:1; text-align:center; padding:16px 8px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+}
+.earth-stat-num { font-size:24px; font-weight:800; line-height:1; }
+.earth-stat-num.grad { background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.earth-stat-num.grad-gold { background:linear-gradient(135deg,var(--gold),var(--pink)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.earth-stat-label { font-size:11px; color:var(--text-2); margin-top:6px; }
+
+/* Sub-tab switcher (My Letters / Lit List) */
+.earth-subtabs {
+  display:flex; gap:0; margin-bottom:16px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  padding:4px;
+}
+.earth-subtab {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:11px 4px; border-radius:10px; cursor:pointer; transition:all .3s;
+  font-size:13px; font-weight:600; color:var(--text-2);
+  position:relative;
+}
+.earth-subtab .icon { font-size:15px; }
+.earth-subtab-count {
+  font-size:11px; font-weight:700; padding:1px 7px; border-radius:100px;
+  background:rgba(255,255,255,.06); color:var(--text-3); transition:all .3s;
+}
+.earth-subtab.active {
+  background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(168,85,247,.12));
+  color:var(--text-1);
+  box-shadow:0 2px 12px rgba(0,229,255,.1);
+}
+.earth-subtab.active .earth-subtab-count {
+  background:linear-gradient(135deg,var(--cyan),var(--purple)); color:#fff;
+}
+.earth-subtab:active { transform:scale(.97); }
+.earth-subtab-content { display:none; animation:pageIn .35s ease; }
+.earth-subtab-content.active { display:block; }
+
+/* Section */
+.earth-section { margin-top:32px; }
+.earth-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.earth-section-title { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.earth-section-title .icon { font-size:18px; }
+.earth-section-count { font-size:12px; color:var(--text-3); }
+
+/* Sent letter card */
+.sent-card {
+  background:var(--bg-card); border:1px solid var(--glass-bd); border-radius:16px;
+  padding:16px; margin-bottom:12px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  transition:all .3s;
+}
+.sent-card:active { transform:scale(.98); }
+.sent-card-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.sent-card-info { flex:1; }
+.sent-card-preview { font-size:13px; color:var(--text-2); line-height:1.6; max-height:40px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.sent-card-meta { display:flex; gap:8px; margin-top:6px; }
+.sent-channel-tag {
+  font-size:10px; padding:2px 8px; border-radius:100px;
+  background:var(--glass); border:1px solid var(--glass-bd); color:var(--text-2);
+}
+.sent-status {
+  font-size:11px; font-weight:600; padding:4px 10px; border-radius:100px;
+  display:flex; align-items:center; gap:4px; white-space:nowrap;
+}
+.sent-status.traveling { background:rgba(0,229,255,.1); color:var(--cyan); border:1px solid rgba(0,229,255,.2); }
+.sent-status.delivered { background:rgba(255,213,107,.1); color:var(--gold); border:1px solid rgba(255,213,107,.2); }
+
+/* Progress bar — space corridor with warp effect */
+.progress-wrap { margin-top:10px; }
+.progress-info { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.progress-percent { font-size:13px; font-weight:700; }
+.progress-percent .grad { background:linear-gradient(135deg,var(--cyan),var(--gold)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.progress-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.progress-bar {
+  height:12px; background:rgba(255,255,255,.04); border-radius:100px; position:relative;
+  overflow:visible;
+}
+/* Warp speed streaks — moving light lines in the track */
+.progress-streaks {
+  position:absolute; inset:0; border-radius:100px; overflow:hidden; pointer-events:none; z-index:0;
+}
+.progress-streaks::before {
+  content:''; position:absolute; inset:0;
+  background:repeating-linear-gradient(90deg,
+    transparent 0, transparent 10px,
+    rgba(0,229,255,.12) 10px, rgba(0,229,255,.12) 11px,
+    transparent 11px, transparent 20px,
+    rgba(168,85,247,.08) 20px, rgba(168,85,247,.08) 21px,
+    transparent 21px, transparent 32px,
+    rgba(255,213,107,.06) 32px, rgba(255,213,107,.06) 33px
+  );
+  animation:warpSpeed 4s linear infinite;
+}
+@keyframes warpSpeed {
+  from { transform:translateX(0); }
+  to { transform:translateX(32px); }
+}
+.progress-fill {
+  height:100%; border-radius:100px;
+  background:linear-gradient(90deg,var(--cyan),var(--purple),var(--gold));
+  background-size:200% 100%;
+  animation:progressFlow 6s linear infinite;
+  position:relative; transition:width 1s ease;
+  box-shadow:0 0 14px rgba(0,229,255,.15);
+  z-index:1;
+}
+@keyframes progressFlow {
+  0% { background-position:0% 0%; }
+  100% { background-position:200% 0%; }
+}
+/* Rocket at progress tip */
+.progress-rocket {
+  position:absolute; right:-5px; top:50%; transform:translateY(-50%);
+  font-size:13px; line-height:1; z-index:3;
+  filter:drop-shadow(0 0 5px rgba(255,213,107,.9)) drop-shadow(0 0 10px rgba(255,107,157,.3));
+  animation:rocketVibrate .8s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+/* Rocket glyph — rotate to face right */
+.rocket-glyph {
+  display:inline-block;
+  transform:rotate(45deg);
+}
+@keyframes rocketVibrate {
+  from { transform:translateY(-50%) translateY(-1.5px); }
+  to { transform:translateY(-50%) translateY(1.5px); }
+}
+/* Flame trail — golden layer */
+.progress-rocket::before {
+  content:''; position:absolute; right:65%; top:50%; transform:translateY(-50%);
+  width:18px; height:4px;
+  background:linear-gradient(to left,rgba(255,213,107,.95),rgba(255,107,157,.4),transparent);
+  border-radius:100px;
+  animation:flameDance 1.2s ease-in-out infinite alternate;
+}
+@keyframes flameDance {
+  0% { width:12px; opacity:.5; height:3px; }
+  100% { width:22px; opacity:1; height:5px; }
+}
+/* Flame trail — cyan core */
+.progress-rocket::after {
+  content:''; position:absolute; right:55%; top:50%; transform:translateY(-50%);
+  width:10px; height:2px;
+  background:linear-gradient(to left,rgba(0,229,255,.9),transparent);
+  border-radius:100px;
+  animation:flameDance2 1s ease-in-out infinite alternate;
+}
+@keyframes flameDance2 {
+  0% { width:6px; opacity:.3; }
+  100% { width:14px; opacity:.8; }
+}
+.progress-fill.delivered {
+  background:linear-gradient(90deg,var(--gold),var(--pink));
+  box-shadow:0 0 14px rgba(255,213,107,.2);
+}
+.progress-fill.delivered .progress-rocket { display:none; }
+
+/* Liked list */
+.liked-list { display:flex; flex-direction:column; gap:10px; }
+.liked-card {
+  display:flex; align-items:center; gap:12px; padding:14px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  cursor:pointer; transition:all .3s;
+}
+.liked-card:active { transform:scale(.97); }
+.liked-avatar {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  background:linear-gradient(135deg,rgba(255,107,157,.08),rgba(168,85,247,.08));
+  border:1px solid rgba(255,107,157,.15);
+}
+.liked-info { flex:1; min-width:0; }
+.liked-from { font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.liked-asteroid { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.liked-preview { font-size:12px; color:var(--text-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.liked-likes { display:flex; align-items:center; gap:3px; font-size:12px; color:var(--pink); font-weight:600; flex-shrink:0; }
+
+/* Coordinate Cards */
+.coord-intro {
+  font-size:12px; color:var(--text-2); line-height:1.7; margin-bottom:16px;
+  padding:14px 16px; border-radius:14px; background:var(--glass); border:1px solid var(--glass-bd);
+}
+.coord-intro .icon { margin-right:4px; }
+.coord-card {
+  position:relative; padding:16px; margin-bottom:12px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  transition:all .3s;
+}
+.coord-card:active { transform:scale(.99); }
+.coord-card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.coord-card-icon {
+  width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.coord-card-title { font-size:15px; font-weight:700; flex:1; }
+.coord-card-actions { display:flex; gap:6px; }
+.coord-action-btn {
+  width:30px; height:30px; border-radius:8px; border:1px solid var(--glass-bd);
+  background:var(--glass); color:var(--text-2); font-size:13px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all .25s;
+}
+.coord-action-btn:active { transform:scale(.9); }
+.coord-action-btn.edit:hover { color:var(--cyan); border-color:var(--cyan); }
+.coord-action-btn.del:hover { color:var(--signal-bright); border-color:var(--signal-bright); }
+.coord-input {
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--glass-bd);
+  background:rgba(0,0,0,.2); color:var(--text-1); font-size:14px; font-family:inherit;
+  transition:all .25s; outline:none;
+}
+.coord-input:focus { border-color:var(--cyan); box-shadow:0 0 0 3px rgba(0,229,255,.1); }
+.coord-input::placeholder { color:var(--text-3); }
+.coord-save-btn {
+  margin-top:12px; width:100%; padding:10px; border:none; border-radius:10px;
+  background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#fff;
+  font-size:14px; font-weight:600; cursor:pointer; transition:all .25s;
+}
+.coord-save-btn:active { transform:scale(.97); }
+.coord-add-btn {
+  width:100%; padding:14px; border:1px dashed var(--glass-bd); border-radius:14px;
+  background:transparent; color:var(--text-2); font-size:14px; font-weight:600;
+  cursor:pointer; transition:all .25s; display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.coord-add-btn:active { transform:scale(.97); }
+.coord-add-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+.coord-value {
+  font-size:14px; color:var(--text-1); padding:8px 12px; border-radius:8px;
+  background:rgba(0,0,0,.15); word-break:break-all; font-family:'SF Mono',monospace; font-size:13px;
+}
+
+/* Empty state */
+.earth-empty {
+  text-align:center; padding:40px 20px; color:var(--text-3);
+}
+.earth-empty-icon { font-size:36px; margin-bottom:10px; opacity:.4; }
+.earth-empty-text { font-size:13px; }
+
+/* ===== Scrollbar ===== */
+.page::-webkit-scrollbar { width:0; }
+
+/* ===== Responsive ===== */
+@media(max-width:380px) {
+  .launch-title { font-size:24px; }
+  .time-grid { grid-template-columns:repeat(2,1fr); }
+  .earth-stats { flex-direction:column; }
+  .earth-subtab { font-size:12px; gap:2px; padding:11px 2px; }
+  .earth-subtab .icon { font-size:14px; }
+  .earth-subtab-count { font-size:10px; padding:1px 5px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Canvas Starfield -->
+<canvas id="starfield"></canvas>
+
+<!-- App -->
+<div id="app">
+
+  <!-- ===== Page 1: 发射 ===== -->
+  <div class="page active" id="page-launch">
+    <div class="launch-page">
+      <div class="launch-header">
+        <div class="launch-logo">STARLETTER</div>
+        <div class="launch-tagline">寄给未来的信</div>
+        <div class="launch-title">写一封信<br><span class="grad">寄给未来的自己</span></div>
+        <div class="launch-sub">在此刻写下心声，设定未来的送达时间<br>通过手写信件、QQ邮箱或短信送达</div>
+      </div>
+
+      <div class="letter-card" id="letterCard">
+        <div class="letter-head">
+          <div class="letter-from">来自 <span class="cyan">现在的我</span></div>
+          <div class="letter-date" id="currentDate"></div>
+        </div>
+        <div class="letter-body">
+          <div class="letter-to">寄至 <span class="gold">未来的我</span></div>
+          <textarea class="letter-input" id="letterInput" placeholder="亲爱的未来的我：
+
+当你读到这封信的时候，也许一切都已经不同了。
+我想告诉你，此刻的我正在……
+
+那些未完成的心愿，那些来不及说的话，
+那些藏在心底的秘密，我都写在了这里。
+
+希望你现在过得很好。" maxlength="5000"></textarea>
+        </div>
+        <div class="letter-foot">
+          <div class="char-count"><span class="cyan" id="charCount">0</span> / 5000 字</div>
+        </div>
+      </div>
+
+      <div class="keyword-section">
+        <div class="keyword-label"><span class="icon">🏷️</span> 标记主题关键字 <span style="color:var(--text-3);font-size:11px;font-weight:400;">（送达前仅显示关键字，内容加密）</span></div>
+        <div class="keyword-input-wrap">
+          <input type="text" class="keyword-input" id="keywordInput" placeholder="如：给25岁的自己 / 考研纪念 / 写给爱情" maxlength="20" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">DELIVERY</div>
+        <div class="section-title-row">
+          <div class="section-title">选择送达方式</div>
+          <div class="vis-toggle-wrap" id="visToggleWrap">
+            <span class="vis-state public" id="visState">公开</span>
+            <div class="vis-toggle" id="visToggle">
+              <div class="vis-knob"></div>
+            </div>
+          </div>
+        </div>
+        <div class="section-desc">信件将在指定日期通过此渠道送达</div>
+        <div class="delivery-list" id="deliveryList">
+          <div class="delivery-card" data-channel="mail">
+            <div class="delivery-icon" style="background:rgba(168,85,247,.1);">📮</div>
+            <div class="delivery-info">
+              <div class="delivery-name">手写信件</div>
+              <div class="delivery-desc">亲笔手写邮寄，尽量当天寄达，前后不超三天</div>
+            </div>
+            <div class="delivery-check">✓</div>
+          </div>
+          <div class="delivery-card" data-channel="qqmail">
+            <div class="delivery-icon" style="background:rgba(18,183,245,.1);">📧</div>
+            <div class="delivery-info">
+              <div class="delivery-name">QQ 邮箱</div>
+              <div class="delivery-desc">精美信件排版，永久保存</div>
+            </div>
+            <div class="delivery-check">✓</div>
+          </div>
+          <div class="delivery-card" data-channel="sms">
+            <div class="delivery-icon" style="background:rgba(255,213,107,.1);">📱</div>
+            <div class="delivery-info">
+              <div class="delivery-name">短信推送</div>
+              <div class="delivery-desc">短信提醒+链接，全设备可读</div>
+            </div>
+            <div class="delivery-check">✓</div>
+          </div>
+          <div class="delivery-card delivery-card-vow" data-channel="unbreakable">
+            <div class="delivery-icon" style="background:rgba(255,107,157,.12);">🛡️</div>
+            <div class="delivery-info">
+              <div class="delivery-name">牢不可破的誓言 <span style="font-size:10px;color:var(--pink);font-weight:400;margin-left:4px;">S-TIER</span></div>
+              <div class="delivery-desc">多渠道冗余送达，尽全力交到对方手中</div>
+            </div>
+            <div class="delivery-check">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">TIMING</div>
+        <div class="section-title">设定送达时间</div>
+        <div class="section-desc">选择未来的某一天，信件将在那天送达</div>
+        <div class="time-grid" id="timeGrid">
+          <div class="time-card" data-years="1">
+            <div class="time-num grad">1</div>
+            <div class="time-unit">年后</div>
+            <div class="time-date" id="date1"></div>
+          </div>
+          <div class="time-card" data-years="3">
+            <div class="time-num grad">3</div>
+            <div class="time-unit">年后</div>
+            <div class="time-date" id="date3"></div>
+          </div>
+          <div class="time-card" data-years="5">
+            <div class="time-num grad">5</div>
+            <div class="time-unit">年后</div>
+            <div class="time-date" id="date5"></div>
+          </div>
+          <div class="time-card" data-years="10">
+            <div class="time-num grad">10</div>
+            <div class="time-unit">年后</div>
+            <div class="time-date" id="date10"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="launch-btn-wrap">
+        <button class="launch-btn" id="launchBtn">🚀 发射至星际</button>
+        <div class="launch-hint">信件将加密存储，在指定日期自动送达</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Page 2: 漫游 ===== -->
+  <div class="page" id="page-wander">
+    <div class="wander-page">
+      <div class="wander-header">
+        <div class="wander-title-row">
+          <div class="wander-title"><span class="grad">漫游</span>星海</div>
+          <div class="wander-refresh" id="refreshBtn">
+            <span class="wander-refresh-icon">↻</span>
+            <span>刷新星图</span>
+          </div>
+        </div>
+        <div class="wander-subtitle">每一颗星星，都是某人寄出的一封信 · 点击阅读 · 点亮传递温暖</div>
+      </div>
+
+      <div class="wander-sky" id="wanderSky">
+        <svg class="constellation-svg" id="constellationSvg"></svg>
+        <div class="constellation-name" id="constellationName">
+          <div class="constellation-name-label">CONSTELLATION</div>
+          <div class="constellation-name-text" id="constellationNameText">—</div>
+          <div class="constellation-name-desc" id="constellationNameDesc">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Page 3: 地球 ===== -->
+  <div class="page" id="page-earth">
+    <div class="earth-page">
+      <div class="earth-header">
+        <div class="earth-avatar-wrap">
+          <div class="earth-avatar-ring"></div>
+          <div class="earth-avatar">🌍</div>
+        </div>
+        <div class="earth-name"><span class="grad">我的星球</span></div>
+        <div class="earth-id" id="earthUserId">EARTH-0000</div>
+      </div>
+
+      <div class="earth-stats">
+        <div class="earth-stat">
+          <div class="earth-stat-num grad" id="statSent">0</div>
+          <div class="earth-stat-label">已发射信件</div>
+        </div>
+        <div class="earth-stat">
+          <div class="earth-stat-num grad-gold" id="statLit">0</div>
+          <div class="earth-stat-label">已点亮</div>
+        </div>
+        <div class="earth-stat">
+          <div class="earth-stat-num grad" id="statTraveling">0</div>
+          <div class="earth-stat-label">旅行中</div>
+        </div>
+      </div>
+
+      <!-- Sub-tab: My Letters / Lit List / Coordinates -->
+      <div class="earth-section">
+        <div class="earth-subtabs">
+          <div class="earth-subtab active" data-subtab="sent">
+            <span class="icon">🚀</span>
+            <span>我的</span>
+            <span class="earth-subtab-count" id="sentCount">0</span>
+          </div>
+          <div class="earth-subtab" data-subtab="liked">
+            <span class="icon">✨</span>
+            <span>点亮</span>
+            <span class="earth-subtab-count" id="likedCount">0</span>
+          </div>
+          <div class="earth-subtab" data-subtab="coords">
+            <span class="icon">📡</span>
+            <span>坐标</span>
+            <span class="earth-subtab-count" id="coordsCount">0</span>
+          </div>
+        </div>
+        <div class="earth-subtab-content active" id="subtabSent">
+          <div id="sentList"></div>
+        </div>
+        <div class="earth-subtab-content" id="subtabLiked">
+          <div class="liked-list" id="likedList"></div>
+        </div>
+        <div class="earth-subtab-content" id="subtabCoords">
+          <div id="coordsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tabbar">
+    <div class="tab active" data-page="launch">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+      </svg>
+      <span>发射</span>
+    </div>
+    <div class="tab" data-page="wander">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M16.24 7.76a6 6 0 0 1-8.48 8.48 6 6 0 0 1 8.48-8.48z"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+      </svg>
+      <span>漫游</span>
+    </div>
+    <div class="tab" data-page="earth">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      <span>地球</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Launch Animation Overlay ===== -->
+<div class="launch-overlay" id="launchOverlay">
+  <div class="flying-letter" id="flyingLetter">
+    <div class="flying-letter-icon">✉</div>
+    <div class="flying-letter-text">信件正在转化为星光...</div>
+  </div>
+  <div class="launch-trail" id="launchTrail"></div>
+  <div class="launch-success" id="launchSuccess">
+    <div class="launch-success-star">⭐</div>
+    <div class="launch-success-title">信件已成为 <span class="grad">一颗星</span></div>
+    <div class="launch-success-desc" id="successDesc">你的信已化作星光，融入浩瀚星海<br>它将在指定日期，照亮未来的你</div>
+    <div class="launch-success-info" id="successInfo">
+      <div class="launch-success-info-item">
+        <div class="launch-success-info-label">送达时间</div>
+        <div class="launch-success-info-value" id="successDate">—</div>
+      </div>
+      <div class="launch-success-info-item">
+        <div class="launch-success-info-label">送达方式</div>
+        <div class="launch-success-info-value" id="successChannel">—</div>
+      </div>
+      <div class="launch-success-info-item">
+        <div class="launch-success-info-label">旅行时长</div>
+        <div class="launch-success-info-value" id="successDuration">—</div>
+      </div>
+    </div>
+    <button class="launch-success-btn" id="closeOverlay">继续探索星海</button>
+  </div>
+</div>
+
+<!-- ===== Letter Detail Modal ===== -->
+<div class="letter-modal-overlay" id="letterModal">
+  <div class="letter-modal">
+    <div class="modal-header">
+      <div class="modal-avatar" id="modalAvatar">🧑‍🚀</div>
+      <div class="modal-header-info">
+        <div class="modal-header-name" id="modalFrom">来自星际旅人</div>
+        <div class="modal-header-asteroid" id="modalAsteroid">小行星 #0000-XX00</div>
+      </div>
+      <div class="modal-signal-tag" id="modalSignalTag" style="display:none;"></div>
+    </div>
+    <div class="modal-star-row">
+      <div class="modal-star" id="modalStar">⭐</div>
+    </div>
+    <div class="modal-date" id="modalDate">—</div>
+    <div class="modal-divider"></div>
+    <div class="modal-content" id="modalContent">—</div>
+    <div class="modal-like-bar">
+      <div class="modal-like-count">
+        <div class="modal-like-num" id="modalLikeNum">0</div>
+        <div class="modal-like-label">人点亮了这颗星</div>
+      </div>
+      <div class="modal-footer" style="margin:0;">
+        <button class="modal-btn close" id="modalClose">关闭</button>
+        <button class="modal-btn light" id="modalLight">💡 点亮</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Starfield Canvas ===== */
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [], shootingStars = [], cw = 0, ch = 0;
+
+function resizeCanvas() {
+  cw = canvas.width = window.innerWidth;
+  ch = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function initStars() {
+  stars = [];
+  const count = Math.floor((cw * ch) / 6000);
+  const colors = ['#ffffff','#ffffff','#ffffff','#00e5ff','#ffd56b','#e0e0ff','#87ceeb'];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * cw, y: Math.random() * ch,
+      r: Math.random() * 1.2 + 0.3,
+      opacity: Math.random() * 0.6 + 0.3,
+      twinkleSpeed: Math.random() * 0.015 + 0.005,
+      twinklePhase: Math.random() * Math.PI * 2,
+      vy: Math.random() * 0.08 + 0.01,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
+}
+initStars();
+window.addEventListener('resize', initStars);
+
+function createShootingStar() {
+  if (shootingStars.length < 2 && Math.random() < 0.003) {
+    shootingStars.push({
+      x: Math.random() * cw, y: Math.random() * ch * 0.3,
+      vx: Math.random() * 5 + 3, vy: Math.random() * 2.5 + 1,
+      life: 1, len: Math.random() * 50 + 30
+    });
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, cw, ch);
+  const g1 = ctx.createRadialGradient(cw * 0.2, ch * 0.3, 0, cw * 0.2, ch * 0.3, 350);
+  g1.addColorStop(0, 'rgba(138,90,220,0.06)'); g1.addColorStop(1, 'transparent');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, cw, ch);
+  const g2 = ctx.createRadialGradient(cw * 0.8, ch * 0.7, 0, cw * 0.8, ch * 0.7, 300);
+  g2.addColorStop(0, 'rgba(0,180,220,0.05)'); g2.addColorStop(1, 'transparent');
+  ctx.fillStyle = g2; ctx.fillRect(0, 0, cw, ch);
+
+  for (let s of stars) {
+    s.twinklePhase += s.twinkleSpeed;
+    const twinkle = (Math.sin(s.twinklePhase) + 1) / 2;
+    const alpha = s.opacity * (0.5 + twinkle * 0.5);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.color; ctx.globalAlpha = alpha; ctx.fill();
+    if (s.r > 0.8) {
+      const gg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 5);
+      gg.addColorStop(0, s.color); gg.addColorStop(1, 'transparent');
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 5, 0, Math.PI * 2);
+      ctx.fillStyle = gg; ctx.globalAlpha = alpha * 0.15; ctx.fill();
+    }
+    s.y += s.vy; if (s.y > ch) { s.y = 0; s.x = Math.random() * cw; }
+  }
+
+  createShootingStar();
+  for (let i = shootingStars.length - 1; i >= 0; i--) {
+    const ss = shootingStars[i];
+    ctx.globalAlpha = ss.life;
+    const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - ss.vx * ss.len / 8, ss.y - ss.vy * ss.len / 8);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.3, 'rgba(0,229,255,0.8)');
+    grad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ss.x, ss.y);
+    ctx.lineTo(ss.x - ss.vx * ss.len / 8, ss.y - ss.vy * ss.len / 8);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(ss.x, ss.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ss.x += ss.vx; ss.y += ss.vy; ss.life -= 0.02;
+    if (ss.life <= 0 || ss.x > cw || ss.y > ch) shootingStars.splice(i, 1);
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animate);
+}
+animate();
+
+/* ===== Utility Functions ===== */
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}.${m}.${day}`;
+}
+function getFutureDate(years) {
+  const d = new Date(); d.setFullYear(d.getFullYear() + years);
+  return formatDate(d);
+}
+function getDateDiff(futureDate) {
+  const now = new Date();
+  const diff = futureDate - now;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days < 30) return `${days} 天`;
+  if (days < 365) return `${Math.floor(days / 30)} 个月`;
+  return `${Math.floor(days / 365)} 年`;
+}
+function formatLikeCount(n) {
+  if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+function generateAsteroidId() {
+  const year = 2020 + Math.floor(Math.random() * 7);
+  const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const l1 = letters[Math.floor(Math.random() * letters.length)];
+  const l2 = letters[Math.floor(Math.random() * letters.length)];
+  const num = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return `小行星 #${year}-${l1}${l2}${num}`;
+}
+
+/* ===== Data: Sample Anonymous Letters ===== */
+const avatarPool = ['🧑‍🚀','👩‍🚀','🧑‍🎓','👩‍🎓','🧑‍💼','👩‍💼','🧑‍🎨','👩‍🎨','🧑‍✈️','👩‍✈️','🧑‍🔬','👩‍🔬','🧙‍♀️','🧙‍♂️','🦊','🐱','🐨','🦉','🦋','🌙','🌠','🌿','🌸','⛄'];
+
+const sampleLetters = [
+  { id:'L01', content:"亲爱的未来的我：\n\n你还记得2024年那个冬天吗？那时候你刚失业，每天窝在出租屋里投简历。你对自己说，没关系，这只是人生的一个弯道。\n\n现在回头看，那个弯道是不是已经变成了风景线？\n\n我希望你已经找到了真正热爱的事。如果不是，也没关系，继续找。", star:'gold', from:'一位北漂旅人', avatar:'🧑‍🚀', likes:1247 },
+  { id:'L02', content:"给十年后的自己：\n\n如果那时候你已经有了孩子，请记得告诉他：妈妈年轻时也是个很酷的人。\n\n我去过12个国家，在冰岛看过极光，在土耳其坐过热气球。我不是一开始就勇敢的，我只是选择了出发。\n\n希望你依然在路上。", star:'gold', from:'一位环球旅者', avatar:'👩‍✈️', likes:3856 },
+  { id:'L03', content:"未来的我：\n\n2026年的今天，我终于鼓起勇气辞职了。所有人都觉得我疯了，放弃稳定的工作去创业。\n\n但我知道如果我不试，我会后悔一辈子。\n\n如果你正在读这封信，无论结果如何，谢谢你当时的勇敢。", star:'cyan', from:'一位创业者', avatar:'🧑‍💼', likes:523 },
+  { id:'L04', content:"致三十岁的自己：\n\n二十岁的我，正在图书馆里写这封信。窗外是校园的银杏树，叶子黄了。\n\n我不知道三十岁的我是什么样子，有没有变得更成熟，有没有学会好好爱自己。\n\n但我知道，此刻的我在努力。那就够了。", star:'cyan', from:'一位大学生', avatar:'🧑‍🎓', likes:89 },
+  { id:'L05', content:"嘿，未来的我：\n\n你还记得那只叫\"橘子\"的猫吗？它现在正趴在我腿上睡觉。\n\n如果你已经有了一只新的猫，请好好对它。如果没有，那就去领养一只吧。\n\n有些温暖，是只有小动物才能给的。", star:'small', from:'一位猫奴', avatar:'🐱', likes:2156 },
+  { id:'L06', content:"给未来的自己：\n\n今天是我确诊抑郁症的第三个月。我开始吃药了，开始试着出门了。\n\n我不知道未来的我会不会已经好了。但我知道，此刻的我在挣扎着往上爬。\n\n如果你已经走出来了，恭喜你。如果还没有，没关系，我陪你。", star:'gold', from:'一位勇敢的人', avatar:'🧙‍♀️', likes:4521 },
+  { id:'L07', content:"未来的我：\n\n你还记得第一次心动的感觉吗？是高中操场上那个穿白衬衫的男生。\n\n我不知道现在你身边是谁，但希望那个人值得你所有的温柔。\n\n如果没有也没关系。你本身就足够完整。", star:'cyan', from:'一位浪漫主义者', avatar:'🌸', likes:347 },
+  { id:'L08', content:"致未来的自己：\n\n今年我50岁了。孩子上了大学，丈夫常出差，家里突然空了。\n\n我决定开始学画画。从零开始，笨手笨脚的。\n\n如果你正在读这封信，希望你还在画。不是为了成为画家，只是为了那份安静的快乐。", star:'gold', from:'一位学习者', avatar:'🧑‍🎨', likes:678 },
+  { id:'L09', content:"未来的我：\n\n你还记得外公吗？他走的那天，我在飞机上，没来得及见最后一面。\n\n我欠他一句再见。\n\n如果你有了孩子，请多带他去看望老人。有些再见，不能等。", star:'small', from:'一位思念者', avatar:'🦉', likes:1934 },
+  { id:'L10', content:"给五年后的自己：\n\n我正在备考研究生。已经二战了，压力大到失眠。\n\n妈妈昨天打电话来，说考不上就回家，她养我。\n\n我不知道未来会怎样。但我想再试一次。\n\n如果你已经上岸了，替我高兴一下。如果没有，那就换条路走，人生不是只有一条路。", star:'cyan', from:'一位考研人', avatar:'🧑‍🎓', likes:45 },
+  { id:'L11', content:"亲爱的未来的我：\n\n今天是我们结婚五周年。他送了我一束向日葵，和五年前一模一样。\n\n我不知道十年后、二十年后，我们还会不会像现在这样。\n\n但我知道，此刻的我很幸福。这就够了。", star:'small', from:'一位妻子', avatar:'👩‍💼', likes:156 },
+  { id:'L12', content:"未来的我：\n\n我终于学会说\"不\"了。\n\n30年了，我一直是那个\"好好先生\"。帮同事加班，帮朋友搬家，帮邻居遛狗。\n\n今天我第一次拒绝了。感觉很好。\n\n希望你继续保持。善良要有锋芒。", star:'gold', from:'一位觉醒者', avatar:'🦊', likes:2890 },
+  { id:'L13', content:"给未来的自己：\n\n今天是我来这座城市的第一天。拖着行李箱走出地铁站，看着满眼的霓虹灯，既兴奋又害怕。\n\n我不知道自己能在这里待多久，但我想试试。\n\n如果你还在这里，说明我们都撑过来了。如果不在了，那也没关系，至少我们勇敢过。", star:'cyan', from:'一位异乡人', avatar:'🧑‍🚀', likes:412 },
+  { id:'L14', content:"未来的我：\n\n你还记得那家巷子里的书店吗？我每周都去，坐在角落看一下午。\n\n老板养了只金毛，总趴在我脚边。\n\n如果那家店还在，替我去看看。如果不在了，就在心里留个位置吧。\n\n有些地方，去过就是永远。", star:'small', from:'一位读书人', avatar:'🧑‍🔬', likes:67 },
+  { id:'L15', content:"致十年后的我：\n\n如果那时候你依然单身，请不要焦虑。\n\n28岁的我，一个人看电影，一个人吃火锅，一个人旅行。不是没人陪，是我享受独处。\n\n希望你依然拥有这份自在。也希望你遇到了那个让独处变得更美好的人——如果还没有，也没关系。", star:'gold', from:'一位自由人', avatar:'🌠', likes:1023 },
+];
+
+// Assign asteroid IDs to all sample letters
+sampleLetters.forEach(l => {
+  if (!l.asteroid) l.asteroid = generateAsteroidId();
+});
+
+/* ===== State Management ===== */
+let mySentLetters = [];
+let likedLetterIds = new Set();
+let myCoords = []; // [{id, type, label, value}]
+
+// Load from localStorage
+try {
+  const saved = localStorage.getItem('starletter_sent');
+  if (saved) mySentLetters = JSON.parse(saved);
+  const liked = localStorage.getItem('starletter_liked');
+  if (liked) likedLetterIds = new Set(JSON.parse(liked));
+  const coords = localStorage.getItem('starletter_coords');
+  if (coords) myCoords = JSON.parse(coords);
+} catch(e) {}
+
+function saveState() {
+  try {
+    localStorage.setItem('starletter_sent', JSON.stringify(mySentLetters));
+    localStorage.setItem('starletter_liked', JSON.stringify([...likedLetterIds]));
+    localStorage.setItem('starletter_coords', JSON.stringify(myCoords));
+  } catch(e) {}
+}
+
+// Generate user ID
+const userId = 'EARTH-' + String(Math.floor(Math.random() * 9000) + 1000);
+document.getElementById('earthUserId').textContent = userId;
+
+/* ===== Strong Signal Logic ===== */
+function getSignalTier(likes) {
+  if (likes >= 1000) return 2;
+  if (likes >= 100) return 1;
+  return 0;
+}
+
+function getSignalWeight(likes) {
+  const tier = getSignalTier(likes);
+  if (tier === 2) return 5;  // 1000+ → 5x more likely
+  if (tier === 1) return 3;  // 100-999 → 3x more likely
+  return 1;                    // 0-99 → normal
+}
+
+/* ===== Tab Switching ===== */
+const tabs = document.querySelectorAll('.tab');
+const pages = document.querySelectorAll('.page');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.page;
+    tabs.forEach(t => t.classList.remove('active'));
+    pages.forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-' + target).classList.add('active');
+    if (target === 'wander') generateStarLetters();
+    if (target === 'earth') { renderEarthPage(); startProgressTimer(); }
+    else stopProgressTimer();
+  });
+});
+
+/* ===== Launch Page Logic ===== */
+const letterInput = document.getElementById('letterInput');
+const charCount = document.getElementById('charCount');
+const currentDateEl = document.getElementById('currentDate');
+
+currentDateEl.textContent = formatDate(new Date());
+document.getElementById('date1').textContent = getFutureDate(1);
+document.getElementById('date3').textContent = getFutureDate(3);
+document.getElementById('date5').textContent = getFutureDate(5);
+document.getElementById('date10').textContent = getFutureDate(10);
+
+letterInput.addEventListener('input', () => {
+  charCount.textContent = letterInput.value.length;
+});
+
+let selectedChannel = '';
+document.querySelectorAll('.delivery-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.delivery-card').forEach(c => {
+      c.classList.remove('selected');
+      c.querySelector('.delivery-check').classList.remove('active');
+    });
+    card.classList.add('selected');
+    card.querySelector('.delivery-check').classList.add('active');
+    selectedChannel = card.dataset.channel;
+  });
+});
+
+/* Visibility Toggle (Public / Encrypted) */
+let isEncrypted = false;
+const visToggle = document.getElementById('visToggle');
+const visState = document.getElementById('visState');
+visToggle.addEventListener('click', () => {
+  isEncrypted = !isEncrypted;
+  if (isEncrypted) {
+    visToggle.classList.add('encrypted');
+    visState.textContent = '加密';
+    visState.classList.remove('public');
+    visState.classList.add('encrypted');
+    showToast('🔒 加密信件不会出现在「漫游」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
+  } else {
+    visToggle.classList.remove('encrypted');
+    visState.textContent = '公开';
+    visState.classList.remove('encrypted');
+    visState.classList.add('public');
+    showToast('🌐 信件已设为公开，将出现在「漫游」星海');
+  }
+});
+
+let selectedYears = null;
+document.querySelectorAll('.time-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedYears = parseInt(card.dataset.years);
+  });
+});
+
+const launchBtn = document.getElementById('launchBtn');
+const launchOverlay = document.getElementById('launchOverlay');
+const flyingLetter = document.getElementById('flyingLetter');
+const launchTrail = document.getElementById('launchTrail');
+const launchSuccess = document.getElementById('launchSuccess');
+const channelNames = { mail:'手写信件', qqmail:'QQ邮箱', sms:'短信推送', unbreakable:'牢不可破的誓言' };
+
+launchBtn.addEventListener('click', () => {
+  const content = letterInput.value.trim();
+  if (!content) { showToast('请先写下你的信件内容'); return; }
+  if (!selectedChannel) { showToast('请选择送达方式'); return; }
+  if (!selectedYears) { showToast('请选择送达时间'); return; }
+
+  // Show coordinate popup → collect contacts → then proceed with launch
+  showCoordPopup(selectedChannel, (contacts) => {
+    proceedWithLaunch(content, selectedChannel, selectedYears, contacts);
+  });
+});
+
+function proceedWithLaunch(content, channel, years, contacts) {
+  const keyword = document.getElementById('keywordInput').value.trim() || '未标记主题';
+
+  const deliveryDate = getFutureDate(years);
+  const deliveryDateObj = new Date();
+  deliveryDateObj.setFullYear(deliveryDateObj.getFullYear() + years);
+  const duration = getDateDiff(deliveryDateObj);
+
+  // Save to sent letters
+  const sentLetter = {
+    id: 'MY' + Date.now(),
+    content: content,
+    keyword: keyword,
+    channel: channel,
+    isEncrypted: isEncrypted,
+    deliveryContacts: contacts,
+    sentDate: formatDate(new Date()),
+    sentTimestamp: Date.now(),
+    deliveryDate: deliveryDate,
+    deliveryTimestamp: deliveryDateObj.getTime(),
+    years: years,
+  };
+  mySentLetters.unshift(sentLetter);
+  saveState();
+
+  document.getElementById('successDate').textContent = deliveryDate;
+  document.getElementById('successChannel').textContent = channelNames[channel];
+  document.getElementById('successDuration').textContent = duration;
+
+  // Special success message
+  const successDesc = document.getElementById('successDesc');
+  if (channel === 'unbreakable') {
+    const contactCount = contacts ? Object.keys(contacts).length : 0;
+    successDesc.innerHTML = `誓言已封印 · ${contactCount}条联络通道已激活<br>我们将动用一切手段，层层接力<br>确保这封信抵达对方手中`;
+  } else if (channel === 'mail') {
+    successDesc.innerHTML = `你的信已化作星光，融入浩瀚星海<br>到达之日将亲笔手写邮寄送达<br>尽量保证当天寄达，前后不超三天`;
+  } else {
+    successDesc.innerHTML = `你的信已化作星光，融入浩瀚星海<br>它将在指定日期，照亮未来的你`;
+  }
+
+  launchOverlay.classList.add('show');
+  flyingLetter.className = 'flying-letter stage-1';
+  launchTrail.classList.remove('active');
+  launchSuccess.classList.remove('show');
+
+  setTimeout(() => {
+    flyingLetter.className = 'flying-letter stage-2';
+    launchTrail.classList.add('active');
+  }, 600);
+  setTimeout(() => {
+    flyingLetter.className = 'flying-letter stage-3';
+  }, 1400);
+  setTimeout(() => {
+    flyingLetter.style.display = 'none';
+    launchSuccess.classList.add('show');
+  }, 2200);
+  setTimeout(() => {
+    addNewStarToSky();
+  }, 2000);
+}
+
+function addNewStarToSky() {
+  stars.push({
+    x: Math.random() * cw,
+    y: Math.random() * ch * 0.5,
+    r: 2.5,
+    opacity: 1,
+    twinkleSpeed: 0.02,
+    twinklePhase: 0,
+    vy: 0.02,
+    color: '#ffd56b'
+  });
+}
+
+document.getElementById('closeOverlay').addEventListener('click', () => {
+  launchOverlay.classList.remove('show');
+  setTimeout(() => {
+    flyingLetter.style.display = '';
+    flyingLetter.className = 'flying-letter';
+    launchTrail.classList.remove('active');
+    launchSuccess.classList.remove('show');
+  }, 300);
+  letterInput.value = '';
+  document.getElementById('keywordInput').value = '';
+  charCount.textContent = '0';
+  selectedChannel = '';
+  selectedYears = null;
+  isEncrypted = false;
+  visToggle.classList.remove('encrypted');
+  visState.textContent = '公开';
+  visState.classList.remove('encrypted');
+  visState.classList.add('public');
+  document.querySelectorAll('.delivery-card').forEach(c => {
+    c.classList.remove('selected');
+    c.querySelector('.delivery-check').classList.remove('active');
+  });
+  document.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
+});
+
+/* ===== Wander Page Logic ===== */
+const wanderSky = document.getElementById('wanderSky');
+const constellationSvg = document.getElementById('constellationSvg');
+const refreshBtn = document.getElementById('refreshBtn');
+const letterModal = document.getElementById('letterModal');
+
+const constellationPrefixes = ['天琴','天鹰','天鹅','飞马','仙女','猎户','大熊','天龙','仙后','英仙','御夫','长蛇','巨爵','麒麟','凤凰','天鸽','狐狸','海豚','小狮','天猫'];
+const constellationSuffixes = ['座','星群','之翼','之环','之冠','之痕','之桥','之渊','之径','之纱'];
+const constellationDescs = [
+  '由 {n} 颗信件之星组成的星座',
+  '某位旅人在星海中留下的轨迹',
+  '跨越光年的思念连成的图案',
+  '匿名信件交织出的星图',
+  '无数心声汇聚而成的星群',
+  '漂浮在时间河流上的星座',
+  '由陌生人的故事编织的星轨',
+  '此刻与未来之间的星桥',
+];
+
+let currentStars = [];
+let currentModalLetter = null;
+
+/**
+ * Weighted random selection: strong signal letters appear more frequently.
+ */
+function pickWeightedLetters(count) {
+  const pool = sampleLetters.map(l => ({ letter: l, weight: getSignalWeight(l.likes) }));
+  const picked = [];
+  const remaining = [...pool];
+
+  for (let i = 0; i < count && remaining.length > 0; i++) {
+    const totalWeight = remaining.reduce((sum, item) => sum + item.weight, 0);
+    let r = Math.random() * totalWeight;
+    let idx = 0;
+    for (let j = 0; j < remaining.length; j++) {
+      r -= remaining[j].weight;
+      if (r <= 0) { idx = j; break; }
+    }
+    picked.push(remaining[idx].letter);
+    remaining.splice(idx, 1);
+  }
+  return picked;
+}
+
+function generateStarLetters() {
+  wanderSky.querySelectorAll('.star-letter').forEach(s => s.remove());
+  constellationSvg.innerHTML = '';
+  currentStars = [];
+
+  const skyRect = wanderSky.getBoundingClientRect();
+  const skyW = skyRect.width || window.innerWidth;
+  const skyH = skyRect.height || window.innerHeight;
+  const headerOffset = 160;
+
+  const count = Math.min(sampleLetters.length, 12);
+  const selected = pickWeightedLetters(count);
+
+  const centerX = skyW / 2;
+  const centerY = headerOffset + (skyH - headerOffset) / 2;
+  const spreadX = Math.min(skyW * 0.38, 160);
+  const spreadY = Math.min((skyH - headerOffset) * 0.35, 140);
+
+  const positions = [];
+  for (let i = 0; i < selected.length; i++) {
+    const letter = selected[i];
+    let x, y, attempts = 0;
+    do {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 0.85 + 0.15;
+      x = centerX + Math.cos(angle) * spreadX * radius + (Math.random() - 0.5) * 40;
+      y = centerY + Math.sin(angle) * spreadY * radius + (Math.random() - 0.5) * 40;
+      x = Math.max(30, Math.min(skyW - 30, x));
+      y = Math.max(headerOffset, Math.min(skyH - 40, y));
+      attempts++;
+    } while (attempts < 20 && positions.some(p => Math.abs(p.x - x) < 45 && Math.abs(p.y - y) < 45));
+    positions.push({ x, y });
+
+    const tier = getSignalTier(letter.likes);
+    const sizeClass = letter.star === 'gold' ? 'large' : letter.star === 'cyan' ? 'medium' : 'small';
+    const signalClass = tier === 2 ? 'signal-t2' : tier === 1 ? 'signal-t1' : '';
+
+    const starEl = document.createElement('div');
+    starEl.className = `star-letter ${sizeClass} ${signalClass}`;
+    starEl.style.left = x + 'px';
+    starEl.style.top = y + 'px';
+    starEl.style.animationDelay = (Math.random() * 3) + 's';
+
+    starEl.innerHTML = '<div class="star-letter-dot"></div>' +
+      (tier > 0 ? '<div class="signal-badge">强烈信号</div>' : '');
+
+    starEl.addEventListener('click', () => showLetterModal(letter));
+
+    // Show signal badge on touch for mobile
+    if (tier > 0) {
+      let badgeTimer = null;
+      starEl.addEventListener('touchstart', (e) => {
+        const badge = starEl.querySelector('.signal-badge');
+        if (badge) {
+          badge.classList.add('show');
+          clearTimeout(badgeTimer);
+          badgeTimer = setTimeout(() => badge.classList.remove('show'), 2500);
+        }
+      });
+    }
+
+    wanderSky.appendChild(starEl);
+    currentStars.push({ el: starEl, x, y, letter });
+  }
+
+  drawConstellationMST(positions, skyW, skyH);
+
+  const prefix = constellationPrefixes[Math.floor(Math.random() * constellationPrefixes.length)];
+  const suffix = constellationSuffixes[Math.floor(Math.random() * constellationSuffixes.length)];
+  const name = prefix + suffix;
+  const descTemplate = constellationDescs[Math.floor(Math.random() * constellationDescs.length)];
+  const desc = descTemplate.replace('{n}', count);
+  showConstellationName(name, desc);
+}
+
+function showConstellationName(name, desc) {
+  const nameEl = document.getElementById('constellationName');
+  document.getElementById('constellationNameText').textContent = name;
+  document.getElementById('constellationNameDesc').textContent = desc;
+  nameEl.style.animation = 'none';
+  nameEl.offsetHeight;
+  nameEl.style.animation = '';
+}
+
+function drawConstellationMST(positions, skyW, skyH) {
+  constellationSvg.setAttribute('viewBox', `0 0 ${skyW} ${skyH}`);
+  constellationSvg.style.width = skyW + 'px';
+  constellationSvg.style.height = skyH + 'px';
+
+  const n = positions.length;
+  if (n < 2) return;
+
+  const inMST = new Array(n).fill(false);
+  const minDist = new Array(n).fill(Infinity);
+  const parent = new Array(n).fill(-1);
+  minDist[0] = 0;
+  const mstEdges = [];
+
+  for (let iter = 0; iter < n; iter++) {
+    let u = -1;
+    for (let v = 0; v < n; v++) {
+      if (!inMST[v] && (u === -1 || minDist[v] < minDist[u])) u = v;
+    }
+    inMST[u] = true;
+    if (parent[u] !== -1) mstEdges.push([parent[u], u]);
+    for (let v = 0; v < n; v++) {
+      if (!inMST[v]) {
+        const dx = positions[u].x - positions[v].x;
+        const dy = positions[u].y - positions[v].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < minDist[v]) { minDist[v] = d; parent[v] = u; }
+      }
+    }
+  }
+
+  const extraEdges = [];
+  const maxExtra = Math.floor(n * 0.4);
+  const candidates = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = positions[i].x - positions[j].x;
+      const dy = positions[i].y - positions[j].y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 140 && !mstEdges.some(e => (e[0]===i&&e[1]===j)||(e[0]===j&&e[1]===i))) {
+        candidates.push({ i, j, d });
+      }
+    }
+  }
+  candidates.sort((a, b) => a.d - b.d);
+  for (let i = 0; i < Math.min(maxExtra, candidates.length); i++) {
+    extraEdges.push([candidates[i].i, candidates[i].j]);
+  }
+
+  const allEdges = [...mstEdges, ...extraEdges];
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const defs = document.createElementNS(svgNS, 'defs');
+  const grad = document.createElementNS(svgNS, 'linearGradient');
+  grad.setAttribute('id', 'constLineGrad');
+  grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
+  grad.setAttribute('x2', '100%'); grad.setAttribute('y2', '100%');
+  const s1 = document.createElementNS(svgNS, 'stop');
+  s1.setAttribute('offset', '0%'); s1.setAttribute('stop-color', '#00e5ff'); s1.setAttribute('stop-opacity', '0.5');
+  const s2 = document.createElementNS(svgNS, 'stop');
+  s2.setAttribute('offset', '50%'); s2.setAttribute('stop-color', '#a855f7'); s2.setAttribute('stop-opacity', '0.35');
+  const s3 = document.createElementNS(svgNS, 'stop');
+  s3.setAttribute('offset', '100%'); s3.setAttribute('stop-color', '#ffd56b'); s3.setAttribute('stop-opacity', '0.5');
+  grad.appendChild(s1); grad.appendChild(s2); grad.appendChild(s3);
+  defs.appendChild(grad);
+  constellationSvg.appendChild(defs);
+
+  allEdges.forEach((edge, idx) => {
+    const [i, j] = edge;
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', positions[i].x);
+    line.setAttribute('y1', positions[i].y);
+    line.setAttribute('x2', positions[j].x);
+    line.setAttribute('y2', positions[j].y);
+    const isMST = idx < mstEdges.length;
+    if (isMST) {
+      line.setAttribute('stroke', 'url(#constLineGrad)');
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-opacity', '0.6');
+    } else {
+      line.setAttribute('stroke', 'rgba(0,229,255,0.15)');
+      line.setAttribute('stroke-width', '0.6');
+    }
+    line.setAttribute('stroke-linecap', 'round');
+    line.style.strokeDasharray = '1000';
+    line.style.strokeDashoffset = '1000';
+    line.style.animation = `drawLine 0.8s ease ${idx * 0.08}s forwards`;
+    constellationSvg.appendChild(line);
+  });
+
+  positions.forEach((pos, idx) => {
+    const glow = document.createElementNS(svgNS, 'circle');
+    glow.setAttribute('cx', pos.x);
+    glow.setAttribute('cy', pos.y);
+    glow.setAttribute('r', '3');
+    glow.setAttribute('fill', 'none');
+    glow.setAttribute('stroke', 'rgba(0,229,255,0.2)');
+    glow.setAttribute('stroke-width', '0.5');
+    glow.style.opacity = '0';
+    glow.style.animation = `nameFadeIn 0.6s ease ${0.5 + idx * 0.06}s forwards`;
+    constellationSvg.appendChild(glow);
+  });
+}
+
+/* ===== Letter Modal ===== */
+function showLetterModal(letter) {
+  currentModalLetter = letter;
+  const tier = getSignalTier(letter.likes);
+  const starMap = { gold:'⭐', cyan:'✨', small:'·' };
+
+  document.getElementById('modalAvatar').textContent = letter.avatar || '🌙';
+  document.getElementById('modalFrom').textContent = letter.from;
+  document.getElementById('modalAsteroid').textContent = letter.asteroid;
+  document.getElementById('modalStar').textContent = starMap[letter.star] || '✨';
+
+  // Signal tag
+  const signalTag = document.getElementById('modalSignalTag');
+  if (tier === 2) {
+    signalTag.style.display = 'inline-flex';
+    signalTag.className = 'modal-signal-tag t2';
+    signalTag.textContent = '📡 强烈信号';
+  } else if (tier === 1) {
+    signalTag.style.display = 'inline-flex';
+    signalTag.className = 'modal-signal-tag t1';
+    signalTag.textContent = '📡 强烈信号';
+  } else {
+    signalTag.style.display = 'none';
+  }
+
+  // Date
+  const now = new Date();
+  const daysAgo = Math.floor(Math.random() * 365) + 1;
+  now.setDate(now.getDate() - daysAgo);
+  document.getElementById('modalDate').textContent = formatDate(now) + ' 寄出';
+
+  document.getElementById('modalContent').textContent = letter.content;
+
+  // Like count
+  const likeNumEl = document.getElementById('modalLikeNum');
+  likeNumEl.textContent = formatLikeCount(letter.likes);
+  likeNumEl.classList.toggle('lit', likedLetterIds.has(letter.id));
+
+  // Light button state
+  const lightBtn = document.getElementById('modalLight');
+  const isLit = likedLetterIds.has(letter.id);
+  lightBtn.innerHTML = isLit ? '✨ 已点亮' : '💡 点亮';
+  lightBtn.classList.toggle('lit', isLit);
+
+  letterModal.classList.add('show');
+}
+
+document.getElementById('modalClose').addEventListener('click', () => {
+  letterModal.classList.remove('show');
+});
+letterModal.addEventListener('click', (e) => {
+  if (e.target === letterModal) letterModal.classList.remove('show');
+});
+
+// Light / 点亮 button
+document.getElementById('modalLight').addEventListener('click', function(e) {
+  if (!currentModalLetter) return;
+  const id = currentModalLetter.id;
+  const isLit = likedLetterIds.has(id);
+  const lightBtn = this;
+  const likeNumEl = document.getElementById('modalLikeNum');
+
+  if (!isLit) {
+    // Light up
+    likedLetterIds.add(id);
+    currentModalLetter.likes++;
+    lightBtn.innerHTML = '✨ 已点亮';
+    lightBtn.classList.add('lit');
+    likeNumEl.textContent = formatLikeCount(currentModalLetter.likes);
+    likeNumEl.classList.add('lit');
+    saveState();
+
+    // Burst animation
+    const rect = lightBtn.getBoundingClientRect();
+    const burst = document.createElement('div');
+    burst.className = 'light-burst';
+    burst.style.left = (rect.left + rect.width / 2 - 30) + 'px';
+    burst.style.top = (rect.top + rect.height / 2 - 30) + 'px';
+    burst.style.position = 'fixed';
+    burst.style.zIndex = '999';
+    document.body.appendChild(burst);
+    setTimeout(() => burst.remove(), 600);
+
+    showToast('已点亮 ⭐ 这颗星更亮了');
+  } else {
+    // Un-light
+    likedLetterIds.delete(id);
+    currentModalLetter.likes = Math.max(0, currentModalLetter.likes - 1);
+    lightBtn.innerHTML = '💡 点亮';
+    lightBtn.classList.remove('lit');
+    likeNumEl.textContent = formatLikeCount(currentModalLetter.likes);
+    likeNumEl.classList.remove('lit');
+    saveState();
+  }
+});
+
+// Refresh button
+refreshBtn.addEventListener('click', () => {
+  refreshBtn.classList.add('spinning');
+  setTimeout(() => {
+    refreshBtn.classList.remove('spinning');
+    generateStarLetters();
+  }, 600);
+});
+
+/* ===== Earth Page Logic ===== */
+function renderEarthPage() {
+  // Stats
+  const traveling = mySentLetters.filter(l => Date.now() < l.deliveryTimestamp).length;
+  document.getElementById('statSent').textContent = mySentLetters.length;
+  document.getElementById('statLit').textContent = likedLetterIds.size;
+  document.getElementById('statTraveling').textContent = traveling;
+  document.getElementById('sentCount').textContent = mySentLetters.length;
+  document.getElementById('likedCount').textContent = likedLetterIds.size;
+  document.getElementById('coordsCount').textContent = myCoords.length;
+
+  renderSentList();
+  renderLikedList();
+  renderCoordsList();
+}
+
+/* ===== Earth Sub-tab Switching ===== */
+document.querySelectorAll('.earth-subtab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.subtab;
+    document.querySelectorAll('.earth-subtab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.earth-subtab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('subtab' + target.charAt(0).toUpperCase() + target.slice(1)).classList.add('active');
+  });
+});
+
+function renderSentList() {
+  const container = document.getElementById('sentList');
+
+  if (mySentLetters.length === 0) {
+    // Add sample sent letters for demo
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const samples = [
+      {
+        id: 'DEMO1', content: '亲爱的未来的我：\n\n你还好吗？那时候的我刚换工作，一切都是新的开始。我有点紧张，但更多的是期待。\n\n希望你已经在新的领域站稳了脚跟。如果还没有，也没关系，我们一直在路上。',
+        keyword: '新的开始', channel: 'mail', isEncrypted: false, sentDate: '2025.01.15', sentTimestamp: now - 180 * dayMs,
+        deliveryDate: '2026.01.15', deliveryTimestamp: now + 185 * dayMs, years: 1,
+      },
+      {
+        id: 'DEMO2', content: '给三年后的自己：\n\n今天是我和小李在一起1000天。我写了一封信给他，也给自己写了一封。\n\n希望三年后我们还在彼此身边。如果不在了，也希望你过得好。',
+        keyword: '写给爱情', channel: 'qqmail', isEncrypted: true, sentDate: '2024.07.01', sentTimestamp: now - 365 * dayMs,
+        deliveryDate: '2027.07.01', deliveryTimestamp: now + 730 * dayMs, years: 3,
+      },
+      {
+        id: 'DEMO3', content: '十年后的我：\n\n此刻的我25岁，在出租屋里写下这封信。窗外是城市的灯火，很亮，但不属于我。\n\n十年后你35岁了，不知道有没有属于自己的灯。',
+        keyword: '25岁的独白', channel: 'sms', isEncrypted: false, sentDate: '2023.06.20', sentTimestamp: now - 740 * dayMs,
+        deliveryDate: '2033.06.20', deliveryTimestamp: now + 2910 * dayMs, years: 10,
+      },
+      {
+        id: 'DEMO4', content: '一年后的自己：\n\n谢谢你坚持了下来。不管现在结果如何，我都知道你尽力了。\n\n希望明年的今天，你会笑着读这封信。',
+        keyword: '考研纪念', channel: 'mail', isEncrypted: true, sentDate: '2024.07.02', sentTimestamp: now - 365 * dayMs,
+        deliveryDate: '2025.07.02', deliveryTimestamp: now - 5 * dayMs, years: 1,
+      },
+    ];
+    mySentLetters = samples;
+    saveState();
+  }
+
+  if (mySentLetters.length === 0) {
+    container.innerHTML = '<div class="earth-empty"><div class="earth-empty-icon">🚀</div><div class="earth-empty-text">还没有发射过信件<br>去"发射"页写下第一封吧</div></div>';
+    return;
+  }
+
+  const now = Date.now();
+  let html = '';
+  for (const letter of mySentLetters) {
+    const isDelivered = now >= letter.deliveryTimestamp;
+    const totalDuration = letter.deliveryTimestamp - letter.sentTimestamp;
+    const elapsed = now - letter.sentTimestamp;
+    let percent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+    const channelTag = channelNames[letter.channel] || letter.channel;
+    const keyword = letter.keyword || '未标记主题';
+    const remainingDays = Math.ceil((letter.deliveryTimestamp - now) / (1000 * 60 * 60 * 24));
+    const encryptedBadge = letter.isEncrypted ? '<span class="sent-channel-tag" style="color:var(--purple);border-color:rgba(168,85,247,.2);background:rgba(168,85,247,.08);">🔒 加密</span>' : '<span class="sent-channel-tag" style="color:var(--cyan);border-color:rgba(0,229,255,.2);background:rgba(0,229,255,.06);">🌐 公开</span>';
+
+    // Special channel tag styling for unbreakable vow
+    const channelTagStyle = letter.channel === 'unbreakable'
+      ? 'style="color:var(--pink);border-color:rgba(255,107,157,.2);background:rgba(255,107,157,.08);"'
+      : '';
+    const channelTagHtml = letter.channel === 'unbreakable'
+      ? `<span class="sent-channel-tag" ${channelTagStyle}>🛡️ ${channelTag}</span>`
+      : `<span class="sent-channel-tag">${channelTag}</span>`;
+
+    // Delivery contacts summary
+    let vowContactsHtml = '';
+    if (letter.deliveryContacts) {
+      const vc = letter.deliveryContacts;
+      const contactCount = Object.keys(vc).length;
+      const summary = [];
+      if (vc.phone) summary.push('📱' + vc.phone.substring(0, 3) + '****' + vc.phone.slice(-4));
+      if (vc.email) summary.push('📧' + vc.email.split('@')[0].substring(0, 6) + '...');
+      if (vc.address) summary.push('📮已填');
+      const contactKeys = Object.keys(vc).filter(k => k.startsWith('contact'));
+      const extraCount = contactKeys.length - (vc.contact2 ? 0 : 0);
+      // Count contacts beyond contact2/contact3
+      const extraContacts = contactKeys.filter(k => k.startsWith('contactExtra')).length;
+      if (vc.contact2 || vc.contact3) summary.push(`${contactKeys.length}备选`);
+      if (extraContacts > 0) summary.push(`+${extraContacts}额外`);
+      if (letter.channel === 'unbreakable') {
+        vowContactsHtml = `<div style="margin-top:6px;font-size:11px;color:var(--text-3);line-height:1.6;">誓言送达 · ${contactCount}条联络通道 · ${summary.join(' · ')}</div>`;
+      } else {
+        vowContactsHtml = `<div style="margin-top:6px;font-size:11px;color:var(--text-3);line-height:1.6;">送达坐标 · ${summary.join(' · ')}</div>`;
+      }
+    }
+
+    // Content preview: encrypted if not delivered, real text if delivered
+    let contentHtml;
+    if (isDelivered) {
+      const preview = letter.content.substring(0, 80) + (letter.content.length > 80 ? '...' : '');
+      contentHtml = `<div class="sent-card-preview">${preview}</div>`;
+    } else {
+      // Generate encrypted blocks
+      const blockCount = Math.min(20, Math.max(8, Math.floor(letter.content.length / 4)));
+      let blocks = '';
+      for (let b = 0; b < blockCount; b++) {
+        const w = 5 + Math.floor(Math.random() * 6);
+        blocks += `<span class="block" style="width:${w}px;"></span>`;
+      }
+      contentHtml = `
+        <div class="encrypted-preview">
+          <span class="encrypted-lock">🔒</span>
+          <span class="encrypted-text">${blocks}</span>
+        </div>`;
+    }
+
+    let statusHtml, progressFillClass, progressTimeText;
+    if (isDelivered) {
+      statusHtml = '<div class="sent-status delivered">✓ 已送达</div>';
+      progressFillClass = 'delivered';
+      progressTimeText = `已于 ${letter.deliveryDate} 送达`;
+      percent = 100;
+    } else {
+      statusHtml = '<div class="sent-status traveling">🛸 旅行中</div>';
+      progressFillClass = '';
+      progressTimeText = `预计 ${letter.deliveryDate} 送达 · 还剩 ${getDateDiff(new Date(letter.deliveryTimestamp))}`;
+    }
+
+    html += `
+      <div class="sent-card">
+        <div class="sent-card-head">
+          <div class="sent-card-info">
+            <div class="keyword-tag"><span class="tag-icon">🏷️</span>${keyword}</div>
+            ${contentHtml}
+            <div class="sent-card-meta">
+              ${channelTagHtml}
+              ${encryptedBadge}
+              <span class="sent-channel-tag">${letter.sentDate} 寄出</span>
+            </div>
+            ${vowContactsHtml}
+          </div>
+          <div class="sent-status-wrap" id="status-${letter.id}">${statusHtml}</div>
+        </div>
+        <div class="progress-wrap" data-letter-id="${letter.id}">
+          <div class="progress-info">
+            <div class="progress-percent"><span class="grad" id="pct-${letter.id}">${percent.toFixed(1)}%</span> ${isDelivered ? '已完成' : '时间进度'}</div>
+            <div class="progress-time" id="time-${letter.id}">${progressTimeText}</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-streaks"></div>
+            <div class="progress-fill ${progressFillClass}" id="fill-${letter.id}" style="width:${percent}%;">
+              <span class="progress-rocket"><span class="rocket-glyph">\u{1F680}</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+/* ===== Real-time Progress Bar Updater ===== */
+let progressTimer = null;
+
+function updateProgressBars() {
+  const now = Date.now();
+  for (const letter of mySentLetters) {
+    const pctEl = document.getElementById('pct-' + letter.id);
+    const fillEl = document.getElementById('fill-' + letter.id);
+    const timeEl = document.getElementById('time-' + letter.id);
+    const statusWrap = document.getElementById('status-' + letter.id);
+    if (!pctEl || !fillEl) continue;
+
+    const isDelivered = now >= letter.deliveryTimestamp;
+    if (isDelivered) {
+      pctEl.textContent = '100.0%';
+      fillEl.style.width = '100%';
+      if (!fillEl.classList.contains('delivered')) {
+        fillEl.classList.add('delivered');
+        if (statusWrap) statusWrap.innerHTML = '<div class="sent-status delivered">✓ 已送达</div>';
+        if (timeEl) timeEl.textContent = `已于 ${letter.deliveryDate} 送达`;
+        // Auto-decrypt: replace encrypted preview with real content
+        const card = fillEl.closest('.sent-card');
+        if (card) {
+          const encryptedEl = card.querySelector('.encrypted-preview');
+          if (encryptedEl) {
+            const preview = letter.content.substring(0, 80) + (letter.content.length > 80 ? '...' : '');
+            const newDiv = document.createElement('div');
+            newDiv.className = 'sent-card-preview';
+            newDiv.style.animation = 'pageIn .5s ease';
+            newDiv.textContent = preview;
+            encryptedEl.replaceWith(newDiv);
+          }
+        }
+      }
+      continue;
+    }
+
+    const totalDuration = letter.deliveryTimestamp - letter.sentTimestamp;
+    const elapsed = now - letter.sentTimestamp;
+    const percent = Math.min(99.9, Math.max(0, (elapsed / totalDuration) * 100));
+    pctEl.textContent = percent.toFixed(1) + '%';
+    fillEl.style.width = percent + '%';
+    if (timeEl) {
+      timeEl.textContent = `预计 ${letter.deliveryDate} 送达 · 还剩 ${getDateDiff(new Date(letter.deliveryTimestamp))}`;
+    }
+  }
+}
+
+function startProgressTimer() {
+  stopProgressTimer();
+  updateProgressBars();
+  progressTimer = setInterval(updateProgressBars, 1000);
+}
+
+function stopProgressTimer() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
+
+function renderLikedList() {
+  const container = document.getElementById('likedList');
+
+  if (likedLetterIds.size === 0) {
+    container.innerHTML = '<div class="earth-empty"><div class="earth-empty-icon">✨</div><div class="earth-empty-text">还没有点亮过信件<br>去"漫游"页点亮一颗星吧</div></div>';
+    return;
+  }
+
+  let html = '';
+  for (const id of likedLetterIds) {
+    const letter = sampleLetters.find(l => l.id === id);
+    if (!letter) continue;
+    const tier = getSignalTier(letter.likes);
+    const preview = letter.content.replace(/\n/g, ' ').substring(0, 40) + '...';
+    const signalIcon = tier === 2 ? '🔴' : tier === 1 ? '🟠' : '';
+
+    html += `
+      <div class="liked-card" data-letter-id="${letter.id}">
+        <div class="liked-avatar">${letter.avatar || '🌙'}</div>
+        <div class="liked-info">
+          <div class="liked-from">${letter.from} ${signalIcon ? '<span style="font-size:10px;">' + signalIcon + ' 强烈信号</span>' : ''}</div>
+          <div class="liked-asteroid">${letter.asteroid}</div>
+          <div class="liked-preview">${preview}</div>
+        </div>
+        <div class="liked-likes">💡 ${formatLikeCount(letter.likes)}</div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+
+  // Click to view
+  container.querySelectorAll('.liked-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.letterId;
+      const letter = sampleLetters.find(l => l.id === id);
+      if (letter) showLetterModal(letter);
+    });
+  });
+}
+
+/* ===== Coordinates Management ===== */
+const coordTypes = [
+  { type: 'phone',  icon: '📱', label: '手机号',   placeholder: '请输入手机号',     bg: 'rgba(255,213,107,.1)' },
+  { type: 'wechat', icon: '💬', label: '微信号',   placeholder: '请输入微信号',     bg: 'rgba(7,193,96,.1)' },
+  { type: 'email',  icon: '📧', label: '邮箱地址', placeholder: '请输入邮箱地址',   bg: 'rgba(18,183,245,.1)' },
+  { type: 'address',icon: '📮', label: '邮寄地址', placeholder: '请输入邮寄地址',   bg: 'rgba(168,85,247,.1)' },
+];
+
+function renderCoordsList() {
+  const container = document.getElementById('coordsList');
+
+  let html = '<div class="coord-intro"><span class="icon">📡</span>保存你的联络坐标，发射信件时可快速选择送达渠道，无需重复填写。</div>';
+
+  // Render existing coords
+  for (const c of myCoords) {
+    const meta = coordTypes.find(t => t.type === c.type) || coordTypes[0];
+    html += `
+      <div class="coord-card" data-coord-id="${c.id}">
+        <div class="coord-card-head">
+          <div class="coord-card-icon" style="background:${meta.bg};">${meta.icon}</div>
+          <div class="coord-card-title">${meta.label}</div>
+          <div class="coord-card-actions">
+            <button class="coord-action-btn edit" data-action="edit" data-id="${c.id}">✎</button>
+            <button class="coord-action-btn del" data-action="del" data-id="${c.id}">✕</button>
+          </div>
+        </div>
+        <div class="coord-value" id="coord-val-${c.id}">${c.value}</div>
+      </div>`;
+  }
+
+  // Add button
+  html += `<button class="coord-add-btn" id="coordAddBtn"><span style="font-size:18px;">＋</span> 添加坐标</button>`;
+
+  container.innerHTML = html;
+
+  // Bind add
+  document.getElementById('coordAddBtn').addEventListener('click', () => {
+    showCoordEditor(null);
+  });
+
+  // Bind edit / del
+  container.querySelectorAll('.coord-action-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === 'edit') {
+        showCoordEditor(id);
+      } else if (action === 'del') {
+        myCoords = myCoords.filter(c => c.id !== id);
+        saveState();
+        renderCoordsList();
+        document.getElementById('coordsCount').textContent = myCoords.length;
+        showToast('已删除该坐标');
+      }
+    });
+  });
+}
+
+function showCoordEditor(editId) {
+  const existing = editId ? myCoords.find(c => c.id === editId) : null;
+  const currentType = existing ? existing.type : coordTypes[0].type;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;animation:pageIn .3s ease;';
+  overlay.className = 'coord-editor-overlay';
+
+  const meta = coordTypes.find(t => t.type === currentType) || coordTypes[0];
+
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:360px;background:var(--bg-mid);border:1px solid var(--glass-bd);border-radius:20px;padding:24px;">
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px;">${editId ? '编辑坐标' : '添加坐标'}</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:20px;">选择类型并填写你的联络信息</div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="coordTypePicker">
+        ${coordTypes.map(t => `
+          <div class="coord-type-chip" data-type="${t.type}" style="
+            display:flex;align-items:center;gap:5px;padding:8px 14px;border-radius:100px;cursor:pointer;
+            font-size:13px;font-weight:600;border:1px solid var(--glass-bd);background:var(--glass);
+            transition:all .25s; ${t.type === currentType ? 'border-color:var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan);' : 'color:var(--text-2);'}
+          ">
+            <span>${t.icon}</span><span>${t.label}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <input type="text" class="coord-input" id="coordEditorInput"
+        placeholder="${meta.placeholder}" value="${existing ? existing.value : ''}"
+        style="margin-bottom:8px;" />
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button id="coordEditorCancel" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--glass-bd);background:var(--glass);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;">取消</button>
+        <button id="coordEditorSave" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--cyan),var(--blue));color:#fff;font-size:14px;font-weight:600;cursor:pointer;">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  let selectedType = currentType;
+  const input = overlay.querySelector('#coordEditorInput');
+
+  // Type picker
+  overlay.querySelectorAll('.coord-type-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedType = chip.dataset.type;
+      overlay.querySelectorAll('.coord-type-chip').forEach(c => {
+        c.style.cssText = c.style.cssText.replace('border-color:var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan);', '');
+        c.style.color = 'var(--text-2)';
+      });
+      chip.style.borderColor = 'var(--cyan)';
+      chip.style.background = 'rgba(0,229,255,.1)';
+      chip.style.color = 'var(--cyan)';
+      const m = coordTypes.find(t => t.type === selectedType);
+      input.placeholder = m.placeholder;
+    });
+  });
+
+  // Cancel
+  overlay.querySelector('#coordEditorCancel').addEventListener('click', () => {
+    overlay.remove();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Save
+  overlay.querySelector('#coordEditorSave').addEventListener('click', () => {
+    const val = input.value.trim();
+    if (!val) { showToast('请输入内容'); return; }
+    if (editId) {
+      const c = myCoords.find(c => c.id === editId);
+      if (c) { c.type = selectedType; c.value = val; }
+      showToast('坐标已更新');
+    } else {
+      myCoords.push({ id: 'COORD' + Date.now(), type: selectedType, value: val });
+      showToast('坐标已保存');
+    }
+    saveState();
+    renderCoordsList();
+    document.getElementById('coordsCount').textContent = myCoords.length;
+    overlay.remove();
+  });
+
+  // Auto focus
+  setTimeout(() => input.focus(), 100);
+}
+
+/* ===== Coordinate Popup (发射时弹窗) ===== */
+// Channel → required field definitions
+const channelFieldMap = {
+  mail:        [{ key:'address', icon:'📮', label:'对方邮寄地址', placeholder:'请输入对方邮寄地址', required:true }],
+  qqmail:      [{ key:'email',  icon:'📧', label:'对方邮箱地址', placeholder:'请输入对方邮箱地址', required:true }],
+  sms:         [{ key:'phone',  icon:'📱', label:'对方手机号',   placeholder:'请输入对方手机号',   required:true }],
+  unbreakable: [
+    { key:'phone',    icon:'📱', label:'对方手机号',     placeholder:'必填 · 用于短信/电话送达',   required:true },
+    { key:'email',    icon:'📧', label:'对方邮箱地址',   placeholder:'必填 · 用于邮件送达',       required:true },
+    { key:'address',  icon:'📮', label:'对方邮寄地址',   placeholder:'必填 · 用于手写信件邮寄',   required:true },
+    { key:'contact2', icon:'👤', label:'备选联系人 2',   placeholder:'姓名 + 手机号 · 紧急转交',  required:false },
+    { key:'contact3', icon:'👤', label:'备选联系人 3',   placeholder:'姓名 + 手机号 · 紧急转交',  required:false },
+  ],
+};
+
+// Map coordTypes type → field key for auto-fill
+const coordTypeToFieldKey = { phone:'phone', wechat:'wechat', email:'email', address:'address' };
+
+function showCoordPopup(channel, onConfirm) {
+  // Remove any existing popup
+  const existing = document.querySelector('.coord-popup-overlay');
+  if (existing) existing.remove();
+
+  const fields = channelFieldMap[channel] || [];
+  const isUnbreakable = channel === 'unbreakable';
+  const channelName = channelNames[channel] || channel;
+  const channelIcon = { mail:'📮', qqmail:'📧', sms:'📱', unbreakable:'🛡️' }[channel] || '📡';
+
+  // Build saved coords chips (filter by relevant types)
+  const relevantTypes = isUnbreakable
+    ? ['phone','email','address']
+    : fields.map(f => f.key);
+  const savedCoords = myCoords.filter(c => relevantTypes.includes(coordTypeToFieldKey[c.type] || c.type));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'coord-popup-overlay';
+
+  let savedCoordsHtml = '';
+  if (savedCoords.length > 0) {
+    savedCoordsHtml = `
+      <div class="coord-saved-section">
+        <div class="coord-saved-label">🗂️ 从地球坐标选择</div>
+        <div class="coord-saved-list">
+          ${savedCoords.map(c => {
+            const meta = coordTypes.find(t => t.type === c.type) || coordTypes[0];
+            const fieldKey = coordTypeToFieldKey[c.type] || c.type;
+            return `<div class="coord-saved-chip" data-coord-id="${c.id}" data-field-key="${fieldKey}" data-value="${c.value.replace(/"/g,'&quot;')}">
+              <span class="chip-icon">${meta.icon}</span>
+              <span class="chip-text">${c.value}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else {
+    savedCoordsHtml = `
+      <div class="coord-saved-section">
+        <div class="coord-saved-label">🗂️ 从地球坐标选择</div>
+        <div class="coord-saved-empty">暂无保存的坐标 · 可在「地球 → 坐标」中预先添加</div>
+      </div>`;
+  }
+
+  // Build fields HTML
+  const fieldsHtml = fields.map(f => `
+    <div class="coord-popup-field" data-field-key="${f.key}">
+      <label>${f.icon} ${f.label} ${f.required ? '<span class="required">必填</span>' : ''}</label>
+      <input type="text" class="coord-popup-input ${isUnbreakable ? 'unbreakable-focus' : ''}" data-field-key="${f.key}" placeholder="${f.placeholder}" />
+    </div>
+  `).join('');
+
+  // Extra contacts container (for unbreakable)
+  const extraHtml = isUnbreakable
+    ? `<div id="coordExtraContainer"></div>
+       <button class="coord-add-extra" id="coordAddExtra">＋ 添加更多备选联系人</button>`
+    : '';
+
+  overlay.innerHTML = `
+    <div class="coord-popup">
+      <div class="coord-popup-header">
+        <div class="coord-popup-icon">📡</div>
+        <div>
+          <div class="coord-popup-title">坐标</div>
+          <div class="coord-popup-sub">填写收件坐标，确保信件准确送达</div>
+        </div>
+        <button class="coord-popup-close" id="coordPopupClose">✕</button>
+      </div>
+      <div class="coord-channel-badge ${channel}">${channelIcon} ${channelName}</div>
+      ${savedCoordsHtml}
+      <div class="coord-popup-fields" id="coordPopupFields">
+        ${fieldsHtml}
+      </div>
+      ${extraHtml}
+      <button class="coord-confirm-btn ${isUnbreakable ? 'unbreakable' : ''}" id="coordConfirmBtn">
+        ${isUnbreakable ? '🛡️ 确认并封印誓言' : '🚀 确认并发射'}
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // --- Bind events ---
+
+  // Close
+  overlay.querySelector('#coordPopupClose').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  // Saved coord chips → auto-fill matching field
+  overlay.querySelectorAll('.coord-saved-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const fieldKey = chip.dataset.fieldKey;
+      const value = chip.dataset.value;
+      const input = overlay.querySelector(`.coord-popup-input[data-field-key="${fieldKey}"]`);
+      if (input) {
+        input.value = value;
+        input.style.borderColor = 'var(--cyan)';
+        setTimeout(() => { input.style.borderColor = ''; }, 1000);
+        const meta = coordTypes.find(t => t.type === Object.keys(coordTypeToFieldKey).find(k => coordTypeToFieldKey[k] === fieldKey)) || {};
+        showToast(`已填入：${value}`);
+      }
+    });
+  });
+
+  // Dynamic extra contacts (unbreakable only)
+  let extraCount = 0;
+  if (isUnbreakable) {
+    const addBtn = overlay.querySelector('#coordAddExtra');
+    const container = overlay.querySelector('#coordExtraContainer');
+    addBtn.addEventListener('click', () => {
+      extraCount++;
+      const num = extraCount + 3;
+      const div = document.createElement('div');
+      div.className = 'coord-extra-row';
+      div.innerHTML = `
+        <div class="coord-popup-field" data-field-key="contactExtra${extraCount}">
+          <label>👤 备选联系人 ${num}</label>
+          <input type="text" class="coord-popup-input unbreakable-focus" data-field-key="contactExtra${extraCount}" placeholder="姓名 + 手机号 · 紧急转交" />
+        </div>
+        <button class="coord-extra-remove">✕</button>
+      `;
+      container.appendChild(div);
+      div.querySelector('.coord-extra-remove').addEventListener('click', () => div.remove());
+    });
+  }
+
+  // Confirm
+  overlay.querySelector('#coordConfirmBtn').addEventListener('click', () => {
+    // Collect all field values
+    const contacts = {};
+    let valid = true;
+    let missingLabels = [];
+
+    for (const f of fields) {
+      const input = overlay.querySelector(`.coord-popup-input[data-field-key="${f.key}"]`);
+      const val = input ? input.value.trim() : '';
+      if (f.required && !val) {
+        valid = false;
+        missingLabels.push(f.label);
+      }
+      if (val) contacts[f.key] = val;
+    }
+
+    // Collect extra contacts
+    overlay.querySelectorAll('.coord-extra-row .coord-popup-input').forEach(input => {
+      const key = input.dataset.fieldKey;
+      const val = input.value.trim();
+      if (val) contacts[key] = val;
+    });
+
+    if (!valid) {
+      showToast('请填写：' + missingLabels.join('、'));
+      return;
+    }
+
+    overlay.remove();
+    onConfirm(contacts);
+  });
+
+  // Auto-focus first input
+  setTimeout(() => {
+    const firstInput = overlay.querySelector('.coord-popup-input');
+    if (firstInput) firstInput.focus();
+  }, 200);
+}
+
+/* ===== Toast ===== */
+function showToast(msg) {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:14px 24px;border-radius:14px;font-size:13px;line-height:1.7;z-index:99999;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(10px);white-space:pre-line;text-align:center;max-width:80vw;border:1px solid rgba(255,255,255,.1);';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+}
+</script>
+</body>
+</html>
