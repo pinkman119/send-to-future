@@ -50,8 +50,8 @@
             v-for="(star, idx) in g.stars"
             :key="idx"
             class="star-letter"
-            :class="[star.sizeClass, star.signalClass]"
-            :style="{ left: star.x + 'px', top: star.y + 'px', animationDelay: star.delay + 's' }"
+            :class="[star.sizeClass, star.signalClass, { listened: listenedIds.includes(star.letter.id) }]"
+            :style="{ left: star.x + 'px', top: star.y + 'px', animationDelay: star.delay + 's', '--sc': star.color, '--glow': star.glow }"
             @click="showLetterModal(star.letter)"
           >
             <view class="star-letter-dot"></view>
@@ -348,6 +348,7 @@ export default {
       isModalLit: false,
       currentModalLetter: null,
       isModalSubscribed: false,
+      listenedIds: [],
     };
   },
   computed: {
@@ -357,12 +358,28 @@ export default {
     },
   },
   mounted() {
+    this.syncListened();
     this.renderAll();
+    uni.$on('palette-change', this.onPaletteChange);
+  },
+  onShow() {
+    // 从地球页返回时，按最新星球颜色重绘星系
+    this.renderAll();
+  },
+  onUnload() {
+    uni.$off('palette-change', this.onPaletteChange);
   },
   onResize() {
     this.renderAll();
   },
   methods: {
+    // 读取「地球-我的星球-星球颜色」当前调色板（每次实时读取，避免 computed 缓存旧值）
+    getGalaxyPalette() {
+      const app = getApp();
+      const pals = (app.globalData && app.globalData.satPalettes) || [];
+      const idx = (typeof app.globalData.satPalette === 'number') ? app.globalData.satPalette : 0;
+      return (pals[idx] && pals[idx].colors) || ['#00e5ff', '#a855f7', '#4facfe', '#ff6b9d', '#4ade80'];
+    },
     // 把归一化坐标映射到当前屏幕尺寸，并计算每个星系的连线
     renderAll() {
       const sysInfo = uni.getSystemInfoSync();
@@ -372,7 +389,8 @@ export default {
       const right = 24;
       const top = 200;                       // 标题区以下
       const bottom = skyH - 150;             // 给底栏 + 指示点留白
-      const availW = Math.max(50, skyW - left - right);
+      const baseW = this.trackWidth || skyW; // 用实际 slide 宽度，保证星空与滑动对齐
+      const availW = Math.max(50, baseW - left - right);
       const availH = Math.max(50, bottom - top);
 
       const rendered = this.galaxies.map(g => {
@@ -381,12 +399,30 @@ export default {
           y: top + s.ny * availH,
         }));
         const lines = computeLines(positions);
-        const stars = g.stars.map((s, i) => ({ ...s, x: positions[i].x, y: positions[i].y }));
+        const pal = this.getGalaxyPalette();
+        const stars = g.stars.map((s, i) => {
+          let color, glow;
+          if (s.sizeClass === 'large') color = pal[0] || '#ffd56b';
+          else if (s.sizeClass === 'medium') color = pal[1] || '#00e5ff';
+          else color = pal[2] || '#e0e0ff';
+          glow = s.tier === 2 ? (pal[3] || pal[0] || '#ff6b9d') : color;
+          return { ...s, x: positions[i].x, y: positions[i].y, color, glow };
+        });
         return { name: g.name, desc: g.desc, stars, lines };
       });
 
       this.rendered = rendered;
-      this.trackWidth = skyW;
+      this.trackWidth = skyW; // 兜底值
+      // 用真实渲染出的 slide 宽度修正 trackWidth，避免 windowWidth 与实际布局宽度
+      // 存在微小差异时，每次滑动都累积向左偏移的 bug
+      this.$nextTick(() => {
+        uni.createSelectorQuery()
+          .select('.galaxy-slide')
+          .boundingClientRect(rect => {
+            if (rect && rect.width) this.trackWidth = rect.width;
+          })
+          .exec();
+      });
     },
     getTouchX(e) {
       const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
@@ -433,6 +469,9 @@ export default {
     goGalaxy(gi) {
       if (gi === this.galaxyIndex) return;
       this.galaxyIndex = gi;
+    },
+    onPaletteChange() {
+      this.renderAll();
     },
     refreshStars() {
       this.isRefreshing = true;
@@ -507,11 +546,14 @@ export default {
       if (!this.currentModalLetter) return;
       const app = getApp();
       if (!app.globalData.likedLetterIds) app.globalData.likedLetterIds = new Set();
+      if (!app.globalData.litRecords) app.globalData.litRecords = [];
       const likedSet = app.globalData.likedLetterIds;
+      const litRecs = app.globalData.litRecords;
       const id = this.currentModalLetter.id;
 
       if (!likedSet.has(id)) {
         likedSet.add(id);
+        if (!litRecs.some(r => r.id === id)) litRecs.push({ id: id, time: Date.now() });
         this.currentModalLetter.likes++;
         this.isModalLit = true;
         this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
@@ -519,6 +561,7 @@ export default {
         uni.showToast({ title: '已点亮 ⭐', icon: 'none', duration: 1500 });
       } else {
         likedSet.delete(id);
+        app.globalData.litRecords = litRecs.filter(r => r.id !== id);
         this.currentModalLetter.likes = Math.max(0, this.currentModalLetter.likes - 1);
         this.isModalLit = false;
         this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
@@ -539,9 +582,10 @@ export default {
           from: letter.from,
           avatar: letter.avatar || '🌙',
           asteroid: letter.asteroid,
-          letterCount: 1,
+          time: formatDate(new Date()),
         });
         this.isModalSubscribed = true;
+        this.syncListened();
         app.globalData.saveState();
         uni.showToast({ title: '已收听 📻', icon: 'none', duration: 1500 });
 
@@ -561,9 +605,16 @@ export default {
       } else {
         app.globalData.mySubscriptions = subs.filter(s => s.letterId !== letter.id);
         this.isModalSubscribed = false;
+        this.syncListened();
         app.globalData.saveState();
         uni.showToast({ title: '已取消收听', icon: 'none', duration: 1500 });
       }
+    },
+    // 同步“我收听过的”信件 id 列表，用于星系中金色高亮
+    syncListened() {
+      const app = getApp();
+      const subs = (app.globalData.mySubscriptions || []) ;
+      this.listenedIds = subs.map(s => s.letterId);
     },
   },
 };
@@ -656,14 +707,20 @@ export default {
   z-index:3;
 }
 .star-letter-dot {
-  width:8px; height:8px; border-radius:50%; background:#fff;
-  box-shadow:0 0 10px rgba(255,255,255,.6);
+  width:5px; height:5px; border-radius:50%;
+  background:var(--sc); box-shadow:0 0 8px var(--glow);
   transition:all .3s;
 }
-.star-letter.large .star-letter-dot { width:12px; height:12px; box-shadow:0 0 16px rgba(255,213,107,.7); background:var(--gold); }
-.star-letter.medium .star-letter-dot { width:10px; height:10px; box-shadow:0 0 12px rgba(0,229,255,.6); background:var(--cyan); }
-.star-letter.small .star-letter-dot { width:6px; height:6px; box-shadow:0 0 8px rgba(255,255,255,.4); background:#e0e0ff; }
+.star-letter.large .star-letter-dot { width:9px; height:9px; }
+.star-letter.medium .star-letter-dot { width:7px; height:7px; }
+.star-letter.small .star-letter-dot { width:4px; height:4px; }
 .star-letter:active .star-letter-dot { transform:scale(1.3); }
+
+/* 已收听（听过）的星星：变为金色，但保持原尺寸不变 */
+.star-letter.listened .star-letter-dot {
+  background: var(--gold) !important;
+  box-shadow: 0 0 14px rgba(255,213,107,.85), 0 0 28px rgba(255,213,107,.45) !important;
+}
 
 @keyframes starTwinkle {
   0%,100% { opacity:.6; }
@@ -672,17 +729,17 @@ export default {
 
 /* Strong Signal Tiers */
 .star-letter.signal-t1 .star-letter-dot {
-  box-shadow:0 0 20px rgba(255,107,157,.6), 0 0 40px rgba(255,107,157,.3);
+  box-shadow:0 0 20px var(--glow), 0 0 40px var(--glow);
   animation:signalPulseT1 2s ease-in-out infinite;
 }
 @keyframes signalPulseT1 {
-  0%,100% { box-shadow:0 0 20px rgba(255,107,157,.6), 0 0 40px rgba(255,107,157,.3); }
-  50% { box-shadow:0 0 30px rgba(255,107,157,.8), 0 0 60px rgba(255,107,157,.4); }
+  0%,100% { box-shadow:0 0 20px var(--glow), 0 0 40px var(--glow); }
+  50% { box-shadow:0 0 30px var(--glow), 0 0 60px var(--glow); }
 }
 .star-letter.signal-t2 .star-letter-dot {
-  width:16px; height:16px;
-  background:radial-gradient(circle,#fff 0%,var(--signal-bright) 40%,var(--pink) 100%);
-  box-shadow:0 0 30px rgba(255,59,107,.9), 0 0 60px rgba(255,107,157,.5), 0 0 90px rgba(255,107,157,.2);
+  width:12px; height:12px;
+  background:var(--sc);
+  box-shadow:0 0 26px var(--glow), 0 0 52px var(--glow), 0 0 80px var(--glow);
   animation:signalPulseT2 1.5s ease-in-out infinite;
 }
 @keyframes signalPulseT2 {
@@ -712,10 +769,12 @@ export default {
 
 /* 星系指示点 + 提示 */
 .galaxy-dots {
-  position:absolute; left:50%; transform:translateX(-50%);
-  bottom:108px; z-index:20; display:flex; gap:8px;
+  position:absolute; left:0; right:0;
+  bottom:108px; z-index:20;
+  display:flex; align-items:center; justify-content:center; flex-wrap:nowrap; gap:8px;
 }
 .galaxy-dot {
+  flex-shrink:0;
   width:7px; height:7px; border-radius:50%;
   background:rgba(255,255,255,.22); transition:all .3s;
 }
@@ -724,7 +783,7 @@ export default {
   background:var(--cyan); box-shadow:0 0 10px rgba(0,229,255,.6);
 }
 .galaxy-hint {
-  position:absolute; left:50%; transform:translateX(-50%);
+  position:absolute; left:0; right:0; text-align:center;
   bottom:86px; z-index:20; font-size:11px; color:var(--text-3);
   letter-spacing:1px; pointer-events:none;
 }

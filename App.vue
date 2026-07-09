@@ -6,9 +6,17 @@
 			myCoords: [],
 			mySubscriptions: [],
 			inboxItems: [],
+			capturedAsteroids: [],
+			litRecords: [],
 			myListenersCount: 0,
 			myPlanet: 'euaf',
 			satPalette: 0,
+			satPalettes: [
+				{ name: '星云', colors: ['#00e5ff', '#a855f7', '#4facfe', '#ff6b9d', '#4ade80'] },
+				{ name: '极光', colors: ['#22d3ee', '#34d399', '#818cf8', '#2dd4bf', '#a78bfa'] },
+				{ name: '暖阳', colors: ['#ffd56b', '#ff9f43', '#ff6b9d', '#ff5e62', '#ffc371'] },
+				{ name: '梦幻', colors: ['#ff6b9d', '#c084fc', '#f472b6', '#a855f7', '#fb7185'] },
+			],
 			saveState() {
 				try {
 					const app = getApp();
@@ -17,6 +25,8 @@
 					uni.setStorageSync('starletter_coords', JSON.stringify(app.globalData.myCoords));
 					uni.setStorageSync('starletter_subs', JSON.stringify(app.globalData.mySubscriptions));
 					uni.setStorageSync('starletter_inbox', JSON.stringify(app.globalData.inboxItems));
+					uni.setStorageSync('starletter_asteroids', JSON.stringify(app.globalData.capturedAsteroids));
+					uni.setStorageSync('starletter_litrec', JSON.stringify(app.globalData.litRecords));
 					uni.setStorageSync('starletter_listeners', JSON.stringify(app.globalData.myListenersCount));
 				uni.setStorageSync('starletter_planet', app.globalData.myPlanet);
 				uni.setStorageSync('starletter_satpal', JSON.stringify(app.globalData.satPalette));
@@ -36,6 +46,10 @@
 				if (subs) this.globalData.mySubscriptions = JSON.parse(subs);
 				const inbox = uni.getStorageSync('starletter_inbox');
 				if (inbox) this.globalData.inboxItems = JSON.parse(inbox);
+				const asteroids = uni.getStorageSync('starletter_asteroids');
+				if (asteroids) this.globalData.capturedAsteroids = JSON.parse(asteroids);
+				const litrec = uni.getStorageSync('starletter_litrec');
+				if (litrec) this.globalData.litRecords = JSON.parse(litrec);
 				const listeners = uni.getStorageSync('starletter_listeners');
 				if (listeners) this.globalData.myListenersCount = JSON.parse(listeners);
 				const planet = uni.getStorageSync('starletter_planet');

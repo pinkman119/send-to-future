@@ -75,7 +75,7 @@
           </view>
         </view>
 
-        <view class="planet-modal-label">卫星颜色</view>
+        <view class="planet-modal-label">星球颜色</view>
         <view class="palette-row">
           <view
             v-for="(pal, idx) in satPalettes"
@@ -126,7 +126,7 @@
           <view class="earth-empty-icon">🚀</view>
           <view class="earth-empty-text">还没有发射过信件<br>去"发射"页写下第一封吧</view>
         </view>
-        <view v-for="letter in sentLetters" :key="letter.id" class="sent-card">
+        <view v-for="letter in sentLetters" :key="letter.id" class="sent-card" @click="viewSentLetter(letter)">
           <view class="sent-card-head">
             <view class="sent-card-info">
               <view class="keyword-tag"><text class="tag-icon">🏷️</text>{{ letter.keyword || '未标记主题' }}</view>
@@ -256,8 +256,21 @@
         </view>
         <view class="modal-date">{{ modalDate }}</view>
         <view class="modal-divider"></view>
-        <view class="modal-content">{{ modalContent }}</view>
-        <view class="modal-like-bar">
+
+        <view class="modal-content" v-if="!modalLocked">{{ modalContent }}</view>
+        <view class="modal-locked" v-else>
+          <view class="modal-locked-icon">🔒</view>
+          <view class="modal-locked-title">信件仍在旅途中</view>
+          <view class="modal-locked-desc">这封信尚未送达，送达后才能在「我的」中查看完整内容</view>
+          <view class="modal-locked-progress">
+            <view class="modal-locked-bar">
+              <view class="modal-locked-fill" :style="{ width: (currentModalLetter ? currentModalLetter._percent : 0) + '%' }"></view>
+            </view>
+            <view class="modal-locked-percent">{{ currentModalLetter ? currentModalLetter._percent : 0 }}%</view>
+          </view>
+        </view>
+
+        <view class="modal-like-bar" v-if="!modalIsMine">
           <view class="modal-like-count">
             <view class="modal-like-num" :class="{ lit: isModalLit }">{{ modalLikeNum }}</view>
             <view class="modal-like-label">人点亮了这颗星</view>
@@ -268,6 +281,9 @@
               {{ isModalLit ? '✨ 已点亮' : '💡 点亮' }}
             </button>
           </view>
+        </view>
+        <view class="modal-footer" v-else style="margin-top:18px;">
+          <button class="modal-btn close" @click="closeModal">关闭</button>
         </view>
       </view>
     </view>
@@ -342,12 +358,6 @@ export default {
         { id: 'amer', emoji: '🌎', name: '地球（美洲）', desc: '显示美洲大陆' },
         { id: 'asau', emoji: '🌏', name: '地球（亚洲/澳洲）', desc: '显示亚澳大陆' },
       ],
-      satPalettes: [
-        { name: '星云', colors: ['#00e5ff', '#a855f7', '#4facfe', '#ff6b9d', '#4ade80'] },
-        { name: '极光', colors: ['#22d3ee', '#34d399', '#818cf8', '#2dd4bf', '#a78bfa'] },
-        { name: '暖阳', colors: ['#ffd56b', '#ff9f43', '#ff6b9d', '#ff5e62', '#ffc371'] },
-        { name: '梦幻', colors: ['#ff6b9d', '#c084fc', '#f472b6', '#a855f7', '#fb7185'] },
-      ],
       currentPlanetId: 'euaf',
       currentPaletteIndex: 0,
       showPlanetModal: false,
@@ -374,6 +384,8 @@ export default {
       modalSignalText: '',
       isModalLit: false,
       currentModalLetter: null,
+      modalIsMine: false,
+      modalLocked: false,
     };
   },
   computed: {
@@ -400,6 +412,10 @@ export default {
     planetEmoji() {
       const p = this.planetOptions.find(o => o.id === this.currentPlanetId);
       return p ? p.emoji : '🌍';
+    },
+    satPalettes() {
+      const app = getApp();
+      return (app.globalData && app.globalData.satPalettes) || [];
     },
     satelliteColors() {
       const pal = this.satPalettes[this.currentPaletteIndex];
@@ -445,6 +461,7 @@ export default {
       const app = getApp();
       app.globalData.satPalette = idx;
       app.globalData.saveState();
+      uni.$emit('palette-change', idx);
     },
     renderPage() {
       const app = getApp();
@@ -606,6 +623,8 @@ export default {
       const app = getApp();
       const likedSet = app.globalData.likedLetterIds || new Set();
       this.currentModalLetter = l;
+      this.modalIsMine = false;
+      this.modalLocked = false;
       const tier = getSignalTier(l.likes);
       const starMap = { gold:'⭐', cyan:'✨', small:'·' };
       this.modalAvatar = l.avatar || '🌙';
@@ -622,6 +641,28 @@ export default {
       this.modalContent = l.content;
       this.modalLikeNum = formatLikeCount(l.likes);
       this.isModalLit = likedSet.has(l.id);
+      this.showModal = true;
+    },
+    viewSentLetter(l) {
+      this.currentModalLetter = l;
+      this.modalIsMine = true;
+      this.modalLocked = !l._isDelivered;
+      this.modalAvatar = '🌍';
+      this.modalFrom = '我寄出的信';
+      this.modalAsteroid = l.keyword ? '主题 · ' + l.keyword : '未标记主题';
+      this.modalStar = '✉️';
+      this.modalDate = (l.sentDate || '') + ' 寄出';
+      this.isModalLit = false;
+      this.modalLikeNum = '';
+      if (l._isDelivered) {
+        this.modalContent = l.content;
+        this.modalSignalText = '✓ 已送达';
+        this.modalSignalClass = 'delivered';
+      } else {
+        this.modalContent = '';
+        this.modalSignalText = l._isLaunchOnly ? '🌟 已发射' : '🛸 旅行中';
+        this.modalSignalClass = l._isLaunchOnly ? 'launched' : 'traveling';
+      }
       this.showModal = true;
     },
     closeModal() { this.showModal = false; },
@@ -819,6 +860,7 @@ export default {
   transition:all .3s;
   box-shadow:0 4px 24px rgba(0,0,0,.35);
   position:relative;
+  cursor:pointer;
 }
 .sent-card:active { transform:scale(.98); }
 .sent-card-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
@@ -1069,12 +1111,23 @@ export default {
 }
 .modal-signal-tag.t1 { background:rgba(255,107,157,.15); color:var(--pink); border:1px solid rgba(255,107,157,.3); }
 .modal-signal-tag.t2 { background:linear-gradient(135deg,var(--signal-bright),var(--pink)); color:#fff; }
+.modal-signal-tag.delivered { background:rgba(255,213,107,.15); color:var(--gold); border:1px solid rgba(255,213,107,.3); }
+.modal-signal-tag.traveling { background:rgba(0,229,255,.15); color:var(--cyan); border:1px solid rgba(0,229,255,.3); }
+.modal-signal-tag.launched { background:rgba(168,85,247,.15); color:var(--purple); border:1px solid rgba(168,85,247,.3); }
 .modal-star-row { display:flex; justify-content:center; margin-bottom:12px; }
 .modal-star { font-size:32px; animation:starPulse 2s ease-in-out infinite; }
 @keyframes starPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2);} }
 .modal-date { text-align:center; font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-bottom:16px; }
 .modal-divider { height:1px; background:linear-gradient(90deg,transparent,var(--glass-bd),transparent); margin:12px 0 16px; }
 .modal-content { font-size:14px; line-height:1.9; color:var(--text-1); white-space:pre-wrap; }
+.modal-locked { text-align:center; padding:20px 8px 8px; }
+.modal-locked-icon { font-size:46px; margin-bottom:12px; opacity:.55; }
+.modal-locked-title { font-size:16px; font-weight:700; color:var(--text-1); margin-bottom:8px; }
+.modal-locked-desc { font-size:12px; color:var(--text-3); line-height:1.7; margin-bottom:20px; }
+.modal-locked-progress { display:flex; align-items:center; gap:10px; }
+.modal-locked-bar { flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:100px; overflow:hidden; }
+.modal-locked-fill { height:100%; border-radius:100px; background:linear-gradient(90deg,var(--cyan),var(--purple)); transition:width 1s ease; }
+.modal-locked-percent { font-size:12px; font-weight:700; color:var(--cyan); font-family:'SF Mono',monospace; }
 .modal-like-bar {
   display:flex; align-items:center; gap:10px; margin-top:18px;
   padding:12px 16px; background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;

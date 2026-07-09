@@ -20,20 +20,25 @@
 
     <!-- Stats -->
     <view class="listen-stats">
-      <view class="listen-stat">
+      <view class="listen-stat listen-stat-clickable" @click="openSubs" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">📡</view>
         <view class="listen-stat-num grad-cyan">{{ subscribedCount }}</view>
         <view class="listen-stat-label">收听中</view>
       </view>
-      <view class="listen-stat">
+      <view class="listen-stat listen-stat-clickable" @click="openLit" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">✨</view>
         <view class="listen-stat-num grad-gold">{{ litCount }}</view>
         <view class="listen-stat-label">被点亮</view>
       </view>
-      <view class="listen-stat">
+      <view class="listen-stat listen-stat-clickable" @click="openListeners" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">📻</view>
         <view class="listen-stat-num grad-purple">{{ listenersCount }}</view>
         <view class="listen-stat-label">被收听</view>
+      </view>
+      <view class="listen-stat listen-stat-clickable" @click="openAtlas" hover-class="listen-stat-hover">
+        <view class="listen-stat-icon">🌠</view>
+        <view class="listen-stat-num grad-cyan">{{ capturedCount }}</view>
+        <view class="listen-stat-label">小行星图鉴</view>
       </view>
     </view>
 
@@ -78,11 +83,114 @@
       </view>
     </view>
 
+    <!-- Asteroid Atlas Popup -->
+    <view class="atlas-modal-overlay" v-if="showAtlas" :class="{ show: showAtlas }" @click="closeAtlas">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">小行星图鉴</view>
+          <view class="inbox-modal-close" @click="closeAtlas">✕</view>
+        </view>
+
+        <view v-if="capturedAsteroids.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">🌠</view>
+          <view class="listen-empty-text">图鉴还是空的<br>点击屏幕背景的流星，收下那份温柔吧</view>
+        </view>
+
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view
+            v-for="item in capturedAsteroids"
+            :key="item.no"
+            class="atlas-card"
+          >
+            <view class="atlas-avatar">🌠</view>
+            <view class="atlas-info">
+              <view class="atlas-name">小行星 {{ item.no }} 号 · {{ item.name }}</view>
+              <view class="atlas-text">{{ item.text }}</view>
+              <view class="atlas-time">捕获于 {{ item.capturedText }}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- My Subscriptions Popup -->
+    <view class="atlas-modal-overlay" v-if="showSubs" :class="{ show: showSubs }" @click="closeSubs">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">我的收听</view>
+          <view class="inbox-modal-close" @click="closeSubs">✕</view>
+        </view>
+        <view v-if="subscriptions.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">📡</view>
+          <view class="listen-empty-text">还没有收听任何信件<br>去"漫游"页点击收听按钮开始吧</view>
+        </view>
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view v-for="sub in subscriptions" :key="sub.id" class="subs-card" @click="openLetterBySub(sub)">
+            <view class="subs-avatar">{{ sub.avatar }}</view>
+            <view class="subs-info">
+              <view class="subs-from">{{ sub.from }}<text class="subs-asteroid">{{ sub.asteroid }}</text></view>
+              <view class="subs-text">{{ sub.content }}</view>
+              <view class="subs-time">收听于 {{ sub.time }}</view>
+            </view>
+            <button class="subs-unsub-btn" @click.stop="unsubscribe(sub.id)">取消收听</button>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- Listeners Popup -->
+    <view class="atlas-modal-overlay" v-if="showListeners" :class="{ show: showListeners }" @click="closeListeners">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">收听我的人</view>
+          <view class="inbox-modal-close" @click="closeListeners">✕</view>
+        </view>
+        <view v-if="listeners.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">📻</view>
+          <view class="listen-empty-text">还没有人收听你<br>去"漫游"页分享你的星频，吸引旅人吧</view>
+        </view>
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view v-for="l in listeners" :key="l.id" class="atlas-card">
+            <view class="atlas-avatar">{{ l.avatar }}</view>
+            <view class="atlas-info">
+              <view class="atlas-name">{{ l.from }}</view>
+              <view class="atlas-text">{{ l.asteroid }}</view>
+              <view class="atlas-time">收听于 {{ l.time }}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- Lit Letters Popup -->
+    <view class="atlas-modal-overlay" v-if="showLit" :class="{ show: showLit }" @click="closeLit">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">我点亮的星</view>
+          <view class="inbox-modal-close" @click="closeLit">✕</view>
+        </view>
+        <view v-if="litList.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">✨</view>
+          <view class="listen-empty-text">还没有点亮任何星<br>去"漫游"或收件箱点亮你喜欢的信件吧</view>
+        </view>
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view v-for="l in litList" :key="l.id" class="atlas-card">
+            <view class="atlas-avatar">{{ l.avatar }}</view>
+            <view class="atlas-info">
+              <view class="atlas-name">{{ l.from }}</view>
+              <view class="atlas-text">{{ l.asteroid }}</view>
+              <view class="atlas-time">点亮于 {{ l.time }}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
     <!-- Subscriptions Section -->
     <view class="listen-section">
       <view class="listen-section-head">
         <view class="listen-section-label">SUBSCRIPTIONS</view>
-        <view class="listen-section-title">我的收听</view>
+        <view class="listen-section-title">我的收听<text class="section-count-badge">{{ subscriptions.length }}</text></view>
         <view class="listen-section-desc">你正在收听这些星频</view>
       </view>
 
@@ -96,14 +204,15 @@
           v-for="sub in subscriptions"
           :key="sub.id"
           class="subs-card"
+          @click="openLetterBySub(sub)"
         >
           <view class="subs-avatar">{{ sub.avatar }}</view>
           <view class="subs-info">
-            <view class="subs-from">{{ sub.from }}</view>
-            <view class="subs-asteroid">{{ sub.asteroid }}</view>
-            <view class="subs-letter-count">{{ sub.letterCount }} 封信件</view>
+            <view class="subs-from">{{ sub.from }}<text class="subs-asteroid">{{ sub.asteroid }}</text></view>
+            <view class="subs-text">{{ sub.content }}</view>
+            <view class="subs-time">收听于 {{ sub.time }}</view>
           </view>
-          <button class="subs-unsub-btn" @click="unsubscribe(sub.id)">取消收听</button>
+          <button class="subs-unsub-btn" @click.stop="unsubscribe(sub.id)">取消收听</button>
         </view>
       </view>
     </view>
@@ -187,12 +296,27 @@ function formatDate(d) {
   return `${y}.${m}.${day}`;
 }
 
+function formatDateTime(ts) {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${formatDate(d)} ${hh}:${mm}`;
+}
+
 export default {
   data() {
     return {
       subscriptions: [],
       inboxItems: [],
+      capturedAsteroids: [],
       showInbox: false,
+      showAtlas: false,
+      showSubs: false,
+      showListeners: false,
+      showLit: false,
+      listeners: [],
+      litList: [],
       showModal: false,
       modalAvatar: '',
       modalFrom: '',
@@ -220,6 +344,9 @@ export default {
     unreadCount() {
       return this.inboxItems.filter(i => !i.read).length;
     },
+    capturedCount() {
+      return this.capturedAsteroids.length;
+    },
   },
   mounted() {
     this.renderPage();
@@ -234,21 +361,60 @@ export default {
     closeInbox() {
       this.showInbox = false;
     },
+    openAtlas() {
+      this.showAtlas = true;
+    },
+    closeAtlas() {
+      this.showAtlas = false;
+    },
+    openSubs() {
+      this.showSubs = true;
+    },
+    closeSubs() {
+      this.showSubs = false;
+    },
+    openListeners() {
+      this.showListeners = true;
+    },
+    closeListeners() {
+      this.showListeners = false;
+    },
+    openLit() {
+      this.showLit = true;
+    },
+    closeLit() {
+      this.showLit = false;
+    },
     renderPage() {
       const app = getApp();
       const subs = app.globalData.mySubscriptions || [];
       const inbox = app.globalData.inboxItems || [];
+      const asteroids = app.globalData.capturedAsteroids || [];
 
-      // Populate subscriptions with letter data
+      // Populate captured asteroids (newest first)
+      this.capturedAsteroids = asteroids
+        .slice()
+        .sort((a, b) => (b.capturedAt || 0) - (a.capturedAt || 0))
+        .map(a => ({
+          no: a.no,
+          name: a.name,
+          text: a.text,
+          capturedText: a.capturedAt ? formatDateTime(a.capturedAt) : '未知时间',
+        }));
+
+      // Populate subscriptions with the received letter data
       this.subscriptions = subs.map(sub => {
         const letter = sampleLetters.find(l => l.id === sub.letterId) || {};
+        const raw = letter.content || '这封信的星图已飘远，无法再读取内容';
+        const content = raw.replace(/\n/g, ' ').substring(0, 60) + (raw.length > 60 ? '...' : '');
         return {
           id: sub.id,
           letterId: sub.letterId,
           avatar: letter.avatar || sub.avatar || '🌙',
           from: letter.from || sub.from || '未知旅人',
           asteroid: letter.asteroid || sub.asteroid || generateAsteroidId(),
-          letterCount: sub.letterCount || Math.floor(Math.random() * 8) + 1,
+          content: content,
+          time: sub.time || formatDate(new Date()),
         };
       });
 
@@ -271,8 +437,36 @@ export default {
         };
       });
 
-      // Simulated listeners count (people who have subscribed to this user)
-      this.listenersCount = app.globalData.myListenersCount || Math.floor(Math.random() * 5) + 1;
+      // Listeners (people who have subscribed to this user)
+      this.listeners = inbox
+        .filter(i => i.type === 'newListener')
+        .map(i => {
+          const letter = sampleLetters.find(l => l.id === i.letterId) || {};
+          return {
+            id: i.id,
+            avatar: letter.avatar || i.avatar || '🌙',
+            from: letter.from || i.from || '一位旅人',
+            asteroid: letter.asteroid || generateAsteroidId(),
+            time: i.time || formatDate(new Date()),
+          };
+        });
+      this.listenersCount = this.listeners.length;
+
+      // Lit letters (letters this user has lit)
+      const litRecs = app.globalData.litRecords || [];
+      this.litList = litRecs
+        .map(rec => {
+          const letter = sampleLetters.find(l => l.id === rec.id);
+          if (!letter) return null;
+          return {
+            id: rec.id,
+            avatar: letter.avatar || '🌙',
+            from: letter.from,
+            asteroid: letter.asteroid || generateAsteroidId(),
+            time: rec.time ? formatDateTime(rec.time) : '未知时间',
+          };
+        })
+        .filter(Boolean);
     },
     openInboxItem(item) {
       // Close the inbox panel and open the letter
@@ -335,11 +529,14 @@ export default {
       if (!this.currentModalLetter) return;
       const app = getApp();
       if (!app.globalData.likedLetterIds) app.globalData.likedLetterIds = new Set();
+      if (!app.globalData.litRecords) app.globalData.litRecords = [];
       const likedSet = app.globalData.likedLetterIds;
+      const litRecs = app.globalData.litRecords;
       const id = this.currentModalLetter.id;
 
       if (!likedSet.has(id)) {
         likedSet.add(id);
+        if (!litRecs.some(r => r.id === id)) litRecs.push({ id: id, time: Date.now() });
         this.currentModalLetter.likes++;
         this.isModalLit = true;
         this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
@@ -347,11 +544,16 @@ export default {
         uni.showToast({ title: '已点亮 ⭐', icon: 'none', duration: 1500 });
       } else {
         likedSet.delete(id);
+        app.globalData.litRecords = litRecs.filter(r => r.id !== id);
         this.currentModalLetter.likes = Math.max(0, this.currentModalLetter.likes - 1);
         this.isModalLit = false;
         this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
         app.globalData.saveState();
       }
+    },
+    openLetterBySub(sub) {
+      const letter = sampleLetters.find(l => l.id === sub.letterId);
+      if (letter) this.showLetterModal(letter);
     },
     unsubscribe(subId) {
       const app = getApp();
@@ -416,7 +618,13 @@ export default {
 .listen-section { margin-top:28px; }
 .listen-section-head { margin-bottom:14px; }
 .listen-section-label { font-size:11px; color:var(--cyan); letter-spacing:3px; font-weight:600; }
-.listen-section-title { font-size:18px; font-weight:700; margin-top:4px; }
+.listen-section-title { font-size:18px; font-weight:700; margin-top:4px; display:flex; align-items:center; gap:8px; }
+.section-count-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; height:22px; padding:0 7px; border-radius:100px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple)); color:#fff;
+  font-size:12px; font-weight:700; line-height:1;
+}
 .listen-section-desc { font-size:12px; color:var(--text-2); margin-top:4px; }
 
 /* Empty */
@@ -493,6 +701,46 @@ export default {
 .inbox-scroll { flex:1; overflow-y:auto; padding:14px 16px calc(14px + env(safe-area-inset-bottom)); }
 .inbox-scroll .inbox-card:last-child { margin-bottom:0; }
 
+/* Clickable stat (asteroid atlas entry) */
+.listen-stat-clickable { cursor:pointer; transition:all .25s; }
+.listen-stat-hover { transform:scale(.96); border-color:rgba(0,229,255,.3); background:rgba(0,229,255,.06); }
+
+/* Asteroid Atlas cards */
+.atlas-card {
+  display:flex; align-items:flex-start; gap:12px; padding:14px 16px; margin-bottom:10px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.atlas-card:last-child { margin-bottom:0; }
+.atlas-avatar {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  border:1px solid rgba(0,229,255,.15);
+}
+.atlas-info { flex:1; min-width:0; }
+.atlas-name { font-size:12px; color:var(--cyan); font-weight:600; letter-spacing:.5px; }
+.atlas-text { font-size:14px; line-height:1.7; color:var(--text-1); margin-top:6px; }
+.atlas-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:8px; }
+
+/* Asteroid Atlas Popup (centered) */
+.atlas-modal-overlay {
+  position:fixed; inset:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  background:rgba(5,5,20,.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; transition:opacity .3s;
+}
+.atlas-modal-overlay.show { opacity:1; }
+.atlas-modal {
+  width:100%; max-width:420px;
+  max-height:78vh; display:flex; flex-direction:column;
+  background:linear-gradient(135deg,rgba(12,12,36,.98),rgba(20,20,50,.98));
+  border:1px solid rgba(0,229,255,.2); border-radius:24px;
+  box-shadow:0 0 60px rgba(0,229,255,.18);
+  transform:scale(.92); opacity:0; transition:transform .3s cubic-bezier(.22,1,.36,1), opacity .3s;
+}
+.atlas-modal-overlay.show .atlas-modal { transform:scale(1); opacity:1; }
+
 /* Subscriptions */
 .subs-list { display:flex; flex-direction:column; gap:10px; }
 .subs-card {
@@ -508,9 +756,10 @@ export default {
   border:1px solid rgba(0,229,255,.2);
 }
 .subs-info { flex:1; min-width:0; }
-.subs-from { font-size:14px; font-weight:600; }
-.subs-asteroid { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:2px; }
-.subs-letter-count { font-size:12px; color:var(--cyan); font-weight:600; margin-top:3px; }
+.subs-from { font-size:14px; font-weight:600; color:var(--text-1); display:flex; align-items:center; gap:6px; }
+.subs-asteroid { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.subs-text { font-size:13px; line-height:1.7; color:var(--text-2); margin-top:6px; }
+.subs-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:8px; }
 .subs-unsub-btn {
   padding:8px 16px; border-radius:100px; border:1px solid rgba(255,107,157,.2);
   background:rgba(255,107,157,.06); color:var(--pink); font-size:12px; font-weight:600;

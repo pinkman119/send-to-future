@@ -1,29 +1,35 @@
 <template>
-  <view class="launch-page">
+  <view class="launch-page" @touchstart="onSwipeStart" @touchend="onSwipeEnd">
     <star-sky />
     <view class="launch-header">
       <view class="launch-logo">STARLETTER</view>
       <view class="launch-tagline">寄给未来的信</view>
-      <view class="launch-title">写一封信<br><text class="grad">寄给未来的自己</text></view>
+      <view class="launch-title">写一封信<br><text class="grad">寄给未来的自己/某人</text></view>
       <view class="launch-sub">在此刻写下心声，设定未来的送达时间<br>通过手写信件、QQ邮箱或短信送达</view>
+    </view>
+
+    <view class="mode-tabs">
+      <view class="mode-tab" :class="{ active: mode === 'self' }" @click="setMode('self')">✉️ 寄给自己</view>
+      <view class="mode-tab" :class="{ active: mode === 'someone' }" @click="setMode('someone')"><text class="tab-ico tab-ico-someone">📪</text> 寄给某人</view>
+      <view class="mode-indicator" :class="mode === 'self' ? 'left' : 'right'"></view>
     </view>
 
     <view class="letter-card">
       <view class="letter-head">
-        <view class="letter-from">来自 <text class="cyan">现在的我</text></view>
+        <view class="letter-from">来自 <text class="cyan" v-if="mode === 'self'">现在的我</text><input v-else class="letter-edit-input" v-model="current.from" placeholder="你的名字 / 昵称" :maxlength="20" :adjust-position="true" /></view>
         <view class="letter-date">{{ currentDate }}</view>
       </view>
       <view class="letter-body">
-        <view class="letter-to">寄至 <text class="gold">未来的我</text></view>
+        <view class="letter-to">寄至 <text class="gold" v-if="mode === 'self'">未来的我</text><input v-else class="letter-edit-input letter-edit-input-gold" v-model="current.to" placeholder="对方的名字 / 昵称" :maxlength="20" :adjust-position="true" /></view>
         <textarea
           class="letter-input"
-          v-model="letterContent"
+          v-model="current.letterContent"
           placeholder="亲爱的未来的我：&#10;&#10;当你读到这封信的时候，也许一切都已经不同了。&#10;我想告诉你，此刻的我正在……&#10;&#10;那些未完成的心愿，那些来不及说的话，&#10;那些藏在心底的秘密，我都写在了这里。&#10;&#10;希望你现在过得很好。"
           :maxlength="5000"
         />
       </view>
       <view class="letter-foot">
-        <view class="char-count"><text class="cyan">{{ letterContent.length }}</text> / 5000 字</view>
+        <view class="char-count"><text class="cyan">{{ current.letterContent.length }}</text> / 5000 字</view>
       </view>
     </view>
 
@@ -32,30 +38,31 @@
       <input
         class="keyword-input"
         type="text"
-        v-model="keyword"
+        v-model="current.keyword"
         placeholder="如：给25岁的自己 / 考研纪念 / 写给爱情"
         :maxlength="20"
         :adjust-position="true"
       />
     </view>
 
-    <view class="launch-only-toggle" :class="{ active: launchOnlyMode }" @click="toggleLaunchOnly">
+    <view v-if="mode === 'self'" class="launch-only-toggle" :class="{ active: current.launchOnlyMode }" @click="toggleLaunchOnly">
+      <view class="corner-ribbon free">免费</view>
       <view class="lot-icon">✨</view>
       <view class="lot-text">
         <view class="lot-title">仅发射 · 不推送</view>
         <view class="lot-desc">信件化作星海中的一颗星，可以被其他星系容纳，但不进行任何渠道推送</view>
       </view>
-      <view class="vis-toggle" :class="{ encrypted: launchOnlyMode }">
+      <view class="vis-toggle" :class="{ encrypted: current.launchOnlyMode }">
         <view class="vis-knob"></view>
       </view>
     </view>
-    <view class="section" v-if="!launchOnlyMode">
+    <view class="section" v-if="!current.launchOnlyMode">
       <view class="section-label">DELIVERY</view>
       <view class="section-title-row">
         <view class="section-title">选择送达方式</view>
         <view class="vis-toggle-wrap" @click="toggleVisibility">
-          <text class="vis-state" :class="isEncrypted ? 'encrypted' : 'public'">{{ isEncrypted ? '加密' : '公开' }}</text>
-          <view class="vis-toggle" :class="{ encrypted: isEncrypted }">
+          <text class="vis-state" :class="current.isEncrypted ? 'encrypted' : 'public'">{{ current.isEncrypted ? '加密' : '公开' }}</text>
+          <view class="vis-toggle" :class="{ encrypted: current.isEncrypted }">
             <view class="vis-knob"></view>
           </view>
         </view>
@@ -64,60 +71,60 @@
       <view class="delivery-list">
         <view
           class="delivery-card"
-          :class="{ selected: selectedChannel === 'mail' }"
+          :class="{ selected: current.selectedChannel === 'mail' }"
           @click="selectChannel('mail')"
         >
-          <view class="delivery-price" :class="{ free: priceMap.mail === 0 }">{{ priceMap.mail === 0 ? '免费' : '¥' + priceMap.mail.toFixed(2) }}</view>
+          <view class="delivery-price" :class="{ free: priceMap.mail === 0 }">{{ priceMap.mail === 0 ? '免费' : '¥ ' + priceMap.mail.toFixed(2) }}</view>
           <view class="delivery-icon" style="background:rgba(168,85,247,.1);">📮</view>
           <view class="delivery-info">
             <view class="delivery-name">手写信件</view>
-            <view class="delivery-desc">亲笔手写邮寄，尽量当天寄达，前后不超三天</view>
+            <view class="delivery-desc">寄托于中国邮政不畏山海的能力，来一次跨越时空的邂逅</view>
           </view>
-          <view class="delivery-check" :class="{ active: selectedChannel === 'mail' }">✓</view>
+          <view class="delivery-check" :class="{ active: current.selectedChannel === 'mail' }">✓</view>
         </view>
         <view
           class="delivery-card"
-          :class="{ selected: selectedChannel === 'qqmail' }"
+          :class="{ selected: current.selectedChannel === 'qqmail' }"
           @click="selectChannel('qqmail')"
         >
-          <view class="delivery-price" :class="{ free: priceMap.qqmail === 0 }">{{ priceMap.qqmail === 0 ? '免费' : '¥' + priceMap.qqmail.toFixed(2) }}</view>
+          <view class="delivery-price" :class="{ free: priceMap.qqmail === 0 }">{{ priceMap.qqmail === 0 ? '免费' : '¥ ' + priceMap.qqmail.toFixed(2) }}</view>
           <view class="delivery-icon" style="background:rgba(18,183,245,.1);">📧</view>
           <view class="delivery-info">
             <view class="delivery-name">QQ 邮箱</view>
-            <view class="delivery-desc">精美信件排版，永久保存</view>
+            <view class="delivery-desc">到期后您将收到我们精心准备的邮件，如果那时邮件还存的话</view>
           </view>
-          <view class="delivery-check" :class="{ active: selectedChannel === 'qqmail' }">✓</view>
+          <view class="delivery-check" :class="{ active: current.selectedChannel === 'qqmail' }">✓</view>
         </view>
         <view
           class="delivery-card"
-          :class="{ selected: selectedChannel === 'sms' }"
+          :class="{ selected: current.selectedChannel === 'sms' }"
           @click="selectChannel('sms')"
         >
-          <view class="delivery-price" :class="{ free: priceMap.sms === 0 }">{{ priceMap.sms === 0 ? '免费' : '¥' + priceMap.sms.toFixed(2) }}</view>
+          <view class="delivery-price" :class="{ free: priceMap.sms === 0 }">{{ priceMap.sms === 0 ? '免费' : '¥ ' + priceMap.sms.toFixed(2) }}</view>
           <view class="delivery-icon" style="background:rgba(255,213,107,.1);">📱</view>
           <view class="delivery-info">
             <view class="delivery-name">短信推送</view>
-            <view class="delivery-desc">短信提醒+链接，全设备可读</view>
+            <view class="delivery-desc">一条封存时光的短信，让您的思绪重新回到今天</view>
           </view>
-          <view class="delivery-check" :class="{ active: selectedChannel === 'sms' }">✓</view>
+          <view class="delivery-check" :class="{ active: current.selectedChannel === 'sms' }">✓</view>
         </view>
         <view
           class="delivery-card delivery-card-vow"
-          :class="{ selected: selectedChannel === 'unbreakable' }"
+          :class="{ selected: current.selectedChannel === 'unbreakable' }"
           @click="selectChannel('unbreakable')"
         >
-          <view class="delivery-price" :class="{ free: priceMap.unbreakable === 0 }">{{ priceMap.unbreakable === 0 ? '免费' : '¥' + priceMap.unbreakable.toFixed(2) }}</view>
+          <view class="delivery-price" :class="{ free: priceMap.unbreakable === 0 }">{{ priceMap.unbreakable === 0 ? '免费' : '¥ ' + priceMap.unbreakable.toFixed(2) }}</view>
           <view class="delivery-icon" style="background:rgba(255,107,157,.12);">🛡️</view>
           <view class="delivery-info">
             <view class="delivery-name">牢不可破的誓言 <text style="font-size:10px;color:var(--pink);font-weight:400;margin-left:4px;">S-TIER</text></view>
-            <view class="delivery-desc">多渠道冗余送达，尽全力交到对方手中</view>
+            <view class="delivery-desc">全渠道推送，我们会拼尽全力将信件交付到您手上，还会将您的信件永远挂到区块链（ETH）主链上，在数字世界里永久留下一个小小的足迹</view>
           </view>
-          <view class="delivery-check" :class="{ active: selectedChannel === 'unbreakable' }">✓</view>
+          <view class="delivery-check" :class="{ active: current.selectedChannel === 'unbreakable' }">✓</view>
         </view>
       </view>
     </view>
 
-    <view class="section" v-if="!launchOnlyMode">
+    <view class="section" v-if="!current.launchOnlyMode">
       <view class="section-label">TIMING</view>
       <view class="section-title">设定送达时间</view>
       <view class="section-desc">选择未来的某一天，信件将在那天送达</view>
@@ -126,7 +133,7 @@
           class="time-card"
           v-for="year in [1, 3, 5, 10]"
           :key="year"
-          :class="{ selected: selectedYears === year }"
+          :class="{ selected: current.selectedYears === year }"
           @click="selectYears(year)"
         >
           <view class="time-num grad">{{ year }}</view>
@@ -137,8 +144,8 @@
     </view>
 
     <view class="launch-btn-wrap">
-      <button class="launch-btn" @click="handleLaunch">{{ launchOnlyMode ? '✨ 仅发射到星海' : '🚀 发射至星际' }}</button>
-      <view class="launch-hint">{{ launchOnlyMode ? '信件将化作星光，永远闪耀于星海，不会推送' : '信件将加密存储，在指定日期自动送达' }}</view>
+      <button class="launch-btn" @click="handleLaunch">{{ current.launchOnlyMode ? '✨ 仅发射到星海' : '🚀 发射至星际' }}</button>
+      <view class="launch-hint">{{ current.launchOnlyMode ? '信件将化作星光，永远闪耀于星海，不会推送' : '信件将加密存储，在指定日期自动送达' }}</view>
     </view>
 
     <!-- Launch Animation Overlay -->
@@ -245,6 +252,7 @@
 
     <!-- Toast -->
     <view class="toast" v-if="toastMsg" :style="{ opacity: toastOpacity }">{{ toastMsg }}</view>
+
   </view>
 </template>
 
@@ -272,13 +280,25 @@ const coordTypeMap = {
 export default {
   data() {
     return {
-      letterContent: '',
-      keyword: '',
+      mode: 'self',
+      self: {
+        letterContent: '',
+        keyword: '',
+        selectedChannel: '',
+        selectedYears: null,
+        isEncrypted: false,
+        launchOnlyMode: false,
+      },
+      someone: {
+        letterContent: '',
+        keyword: '',
+        selectedChannel: '',
+        selectedYears: null,
+        isEncrypted: false,
+        from: '',
+        to: '',
+      },
       currentDate: '',
-      selectedChannel: '',
-      selectedYears: null,
-      isEncrypted: false,
-      launchOnlyMode: false,
       priceMap: { mail: 9.9, qqmail: 0, sms: 0.99, unbreakable: 19.9 },
       showOverlay: false,
       animationStage: '',
@@ -299,9 +319,14 @@ export default {
       toastOpacity: 1,
       toastTimer: null,
       pendingChannel: '',
+      _swipeStartX: 0,
+      _swipeStartY: 0,
     };
   },
   computed: {
+    current() {
+      return this.mode === 'self' ? this.self : this.someone;
+    },
     isUnbreakableChannel() {
       return this.coordChannel === 'unbreakable';
     },
@@ -348,14 +373,14 @@ export default {
       return map[type] || type;
     },
     selectChannel(channel) {
-      this.selectedChannel = channel;
+      this.current.selectedChannel = channel;
     },
     selectYears(years) {
-      this.selectedYears = years;
+      this.current.selectedYears = years;
     },
     toggleVisibility() {
-      this.isEncrypted = !this.isEncrypted;
-      if (this.isEncrypted) {
+      this.current.isEncrypted = !this.current.isEncrypted;
+      if (this.current.isEncrypted) {
         this.showToast('🔒 加密信件不会出现在「漫游」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
       } else {
         this.showToast('🌐 信件已设为公开，将出现在「漫游」星海');
@@ -371,20 +396,20 @@ export default {
       }, 3000);
     },
     handleLaunch() {
-      if (!this.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
-      if (this.launchOnlyMode) {
+      if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
+      if (this.current.launchOnlyMode) {
         this.showCoordPopup = false;
         this.proceedWithLaunch(null, true);
         return;
       }
-      if (!this.selectedChannel) { this.showToast('请选择送达方式'); return; }
-      if (!this.selectedYears) { this.showToast('请选择送达时间'); return; }
-      this.pendingChannel = this.selectedChannel;
+      if (!this.current.selectedChannel) { this.showToast('请选择送达方式'); return; }
+      if (!this.current.selectedYears) { this.showToast('请选择送达时间'); return; }
+      this.pendingChannel = this.current.selectedChannel;
       this.showCoordPopup = true;
-      this.coordChannel = this.selectedChannel;
-      this.coordChannelName = channelNames[this.selectedChannel] || this.selectedChannel;
-      this.coordChannelIcon = { mail: '📮', qqmail: '📧', sms: '📱', unbreakable: '🛡️' }[this.selectedChannel] || '📡';
-      this.coordFields = channelFieldMap[this.selectedChannel] || [];
+      this.coordChannel = this.current.selectedChannel;
+      this.coordChannelName = channelNames[this.current.selectedChannel] || this.current.selectedChannel;
+      this.coordChannelIcon = { mail: '📮', qqmail: '📧', sms: '📱', unbreakable: '🛡️' }[this.current.selectedChannel] || '📡';
+      this.coordFields = channelFieldMap[this.current.selectedChannel] || [];
       const fieldValues = {};
       this.coordFields.forEach(f => { fieldValues[f.key] = ''; });
       this.coordFieldValues = fieldValues;
@@ -427,7 +452,7 @@ export default {
       }
 
       this.showCoordPopup = false;
-      const payPrice = this.priceMap[this.selectedChannel] || 0;
+      const payPrice = this.priceMap[this.current.selectedChannel] || 0;
       if (payPrice > 0) {
         this.simulateWechatPay(payPrice, contacts);
       } else {
@@ -435,18 +460,19 @@ export default {
       }
     },
     simulateWechatPay(price, contacts) {
-      this.showToast(`💳 正在发起微信支付\n¥${price.toFixed(2)}`);
+      this.showToast(`💳 正在发起微信支付\n ${price.toFixed(2)}`);
       // 真实环境调用 uni.requestPayment({ provider: 'wxpay', ... }) 完成支付
       setTimeout(() => {
-        this.showToast(`✅ 微信支付成功\n¥${price.toFixed(2)}`);
+        this.showToast(`✅ 微信支付成功\n¥ ${price.toFixed(2)}`);
         this.proceedWithLaunch(contacts);
       }, 1200);
     },
     proceedWithLaunch(contacts, isLaunchOnly) {
-      const content = this.letterContent.trim();
-      const channel = isLaunchOnly ? 'launch' : this.selectedChannel;
-      const years = isLaunchOnly ? null : this.selectedYears;
-      const keyword = this.keyword.trim() || '未标记主题';
+      const mode = this.mode;
+      const content = this.current.letterContent.trim();
+      const channel = isLaunchOnly ? 'launch' : this.current.selectedChannel;
+      const years = isLaunchOnly ? null : this.current.selectedYears;
+      const keyword = this.current.keyword.trim() || '未标记主题';
 
       const deliveryDate = isLaunchOnly ? '' : this.getFutureDate(years);
       const deliveryDateObj = new Date();
@@ -458,7 +484,8 @@ export default {
         content,
         keyword,
         channel,
-        isEncrypted: this.isEncrypted,
+        mode,
+        isEncrypted: this.current.isEncrypted,
         deliveryContacts: isLaunchOnly ? null : contacts,
         sentDate: this.formatDate(new Date()),
         sentTimestamp: Date.now(),
@@ -484,7 +511,9 @@ export default {
       } else if (channel === 'mail') {
         this.successDesc = `你的信已化作星光，融入浩瀚星海\n到达之日将亲笔手写邮寄送达\n尽量保证当天寄达，前后不超三天`;
       } else {
-        this.successDesc = `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮未来的你`;
+        this.successDesc = mode === 'someone'
+          ? `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮那个重要的人`
+          : `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮未来的你`;
       }
 
       this.showOverlay = true;
@@ -508,19 +537,39 @@ export default {
       this.animationStage = '';
       this.trailActive = false;
       this.showSuccess = false;
-      this.letterContent = '';
-      this.keyword = '';
-      this.selectedChannel = '';
-      this.selectedYears = null;
-      this.isEncrypted = false;
-      this.launchOnlyMode = false;
+      this.current.letterContent = '';
+      this.current.keyword = '';
+      this.current.selectedChannel = '';
+      this.current.selectedYears = null;
+      this.current.isEncrypted = false;
+      if (this.current.launchOnlyMode !== undefined) this.current.launchOnlyMode = false;
+      this.current.from = '';
+      this.current.to = '';
     },
     toggleLaunchOnly() {
-      this.launchOnlyMode = !this.launchOnlyMode;
-      if (this.launchOnlyMode) {
+      this.current.launchOnlyMode = !this.current.launchOnlyMode;
+      if (this.current.launchOnlyMode) {
         this.showToast('✨ 仅发射模式已开启\n信件将化作星海中的一颗星\n不进行任何推送送达');
       } else {
         this.showToast('已切换回常规发射\n可选择送达方式与日期');
+      }
+    },
+    setMode(mode) {
+      this.mode = mode;
+    },
+    onSwipeStart(e) {
+      const t = e.touches && e.touches[0];
+      this._swipeStartX = t ? t.clientX : 0;
+      this._swipeStartY = t ? t.clientY : 0;
+    },
+    onSwipeEnd(e) {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - this._swipeStartX;
+      const dy = t.clientY - this._swipeStartY;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx < 0 && this.mode === 'self') this.mode = 'someone';
+        else if (dx > 0 && this.mode === 'someone') this.mode = 'self';
       }
     },
   },
@@ -543,6 +592,50 @@ export default {
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
 .launch-sub { font-size:13px; color:var(--text-2); margin-top:10px; line-height:1.6; }
+
+/* Mode Tabs (self / someone) */
+.mode-tabs {
+  display:flex; margin-top:24px; position:relative; z-index:2;
+  background:var(--glass); border:1px solid var(--glass-bd);
+  border-radius:100px; padding:5px;
+}
+.mode-tab {
+  position:relative; z-index:2; flex:1; text-align:center; padding:11px 8px;
+  border-radius:100px; font-size:14px; font-weight:600; color:var(--text-2);
+  cursor:pointer; transition:color .35s cubic-bezier(.16,1,.3,1);
+}
+.mode-tab.active { color:#fff; }
+.tab-ico { display:inline-block; width:14px; height:14px; margin-right:5px; vertical-align:-2px; }
+.tab-ico-someone {
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 12h-6l-2 3h-4l-2-3H2'/><path d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/></svg>") no-repeat center / contain;
+}
+.mode-indicator {
+  position:absolute; top:5px; left:5px; z-index:1;
+  width:calc(50% - 5px); height:calc(100% - 10px); border-radius:100px;
+  background:linear-gradient(135deg,var(--cyan),rgba(168,85,247,.5));
+  box-shadow:0 0 20px rgba(0,229,255,.3);
+  transition:transform .38s cubic-bezier(.16,1,.3,1), background .38s ease, box-shadow .38s ease;
+}
+.mode-indicator.left {
+  background:linear-gradient(135deg,var(--cyan),rgba(168,85,247,.5));
+  box-shadow:0 0 20px rgba(0,229,255,.3);
+}
+.mode-indicator.right {
+  transform:translateX(100%);
+  background:linear-gradient(135deg,rgba(0,229,255,.5),var(--purple));
+  box-shadow:0 0 20px rgba(168,85,247,.3);
+}
+
+/* Editable from/to inputs (someone mode) */
+.letter-edit-input {
+  display:inline-block; min-width:120px; max-width:60%;
+  font-size:13px; color:var(--text-1); background:rgba(0,229,255,.06);
+  border:1px solid rgba(0,229,255,.25); border-radius:8px;
+  padding:4px 10px; outline:none; vertical-align:baseline;
+}
+.letter-edit-input::placeholder { color:var(--text-3); }
+.letter-edit-input-gold { color:var(--gold); border-color:rgba(255,213,107,.3); background:rgba(255,213,107,.06); }
+.letter-edit-input:focus { border-color:var(--cyan); }
 
 /* Letter Card */
 .letter-card {
@@ -633,14 +726,20 @@ export default {
 }
 .delivery-check.active { border-color:var(--cyan); background:var(--cyan); color:#000; }
 
-/* Delivery Price Badge */
-.delivery-price {
-  position:absolute; top:10px; left:12px; z-index:2;
-  font-size:10px; font-weight:700; padding:3px 9px; border-radius:100px;
-  background:rgba(255,213,107,.15); color:var(--gold); border:1px solid rgba(255,213,107,.35);
+/* Corner Ribbon (free / paid) */
+.delivery-price,
+.corner-ribbon {
+  position:absolute; top:0; left:0; z-index:3;
+  font-size:11px; font-weight:400; padding:4px 14px 4px 10px;
+  background:linear-gradient(135deg,#2563eb 0%,#06b6d4 100%); color:#ffffff;
+  border-top-left-radius:12px; border-bottom-right-radius:10px;
   letter-spacing:.3px; font-family:'SF Mono',monospace;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
-.delivery-price.free { background:rgba(7,193,96,.12); color:#37d67a; border-color:rgba(7,193,96,.35); }
+.delivery-price.free,
+.corner-ribbon.free {
+  background:rgba(7,193,96,.95); color:#ffffff;
+}
 
 /* Delivery Card - Unbreakable Vow */
 .delivery-card-vow {
@@ -784,8 +883,9 @@ export default {
 
 /* Launch Only Toggle */
 .launch-only-toggle {
+  position:relative;
   display:flex; align-items:center; gap:12px; text-align:left;
-  padding:14px 16px; margin-top:32px; margin-bottom:8px;
+  padding:30px 16px 14px; margin-top:32px; margin-bottom:8px;
   background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
   cursor:pointer; transition:all .3s cubic-bezier(.16,1,.3,1);
 }
