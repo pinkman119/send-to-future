@@ -2806,12 +2806,12 @@
       </div>
     </div>
 
-    <!-- ===== Page 2: 漫游 ===== -->
+    <!-- ===== Page 2: 星系 ===== -->
     <div class="page" id="page-wander">
       <div class="wander-page">
         <div class="wander-header">
           <div class="wander-title-row">
-            <div class="wander-title"><span class="grad">漫游</span>星海</div>
+            <div class="wander-title"><span class="grad">星系</span>星海</div>
             <div class="wander-refresh" id="refreshBtn">
               <span class="wander-refresh-icon">↻</span>
               <span>刷新星图</span>
@@ -2909,7 +2909,7 @@
           <path d="M16.24 7.76a6 6 0 0 1-8.48 8.48 6 6 0 0 1 8.48-8.48z" />
           <circle cx="12" cy="12" r="2" fill="currentColor" />
         </svg>
-        <span>漫游</span>
+        <span>星系</span>
       </div>
       <div class="tab" data-page="earth">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -3226,13 +3226,13 @@
         visState.textContent = '加密';
         visState.classList.remove('public');
         visState.classList.add('encrypted');
-        showToast('🔒 加密信件不会出现在「漫游」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
+        showToast('🔒 加密信件不会出现在「星系」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
       } else {
         visToggle.classList.remove('encrypted');
         visState.textContent = '公开';
         visState.classList.remove('encrypted');
         visState.classList.add('public');
-        showToast('🌐 信件已设为公开，将出现在「漫游」星海');
+        showToast('🌐 信件已设为公开，将出现在「星系」星海');
       }
     });
 
@@ -3934,7 +3934,7 @@
       const container = document.getElementById('likedList');
 
       if (likedLetterIds.size === 0) {
-        container.innerHTML = '<div class="earth-empty"><div class="earth-empty-icon">✨</div><div class="earth-empty-text">还没有点亮过信件<br>去"漫游"页点亮一颗星吧</div></div>';
+        container.innerHTML = '<div class="earth-empty"><div class="earth-empty-icon">✨</div><div class="earth-empty-text">还没有点亮过信件<br>去"星系"页点亮一颗星吧</div></div>';
         return;
       }
 

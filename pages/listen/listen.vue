@@ -9,10 +9,6 @@
             <text class="listen-badge-icon">📡</text>
             <text class="listen-badge-text">持续接收信号</text>
           </view>
-          <view class="inbox-trigger" @click="openInbox" hover-class="inbox-trigger-hover">
-            <text class="inbox-trigger-icon">📥</text>
-            <text v-if="unreadCount > 0" class="inbox-trigger-badge">{{ unreadCount }}</text>
-          </view>
         </view>
       </view>
       <view class="listen-subtitle">收听他人的星频，持续接收他们寄出的信件</view>
@@ -23,63 +19,17 @@
       <view class="listen-stat listen-stat-clickable" @click="openSubs" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">📡</view>
         <view class="listen-stat-num grad-cyan">{{ subscribedCount }}</view>
-        <view class="listen-stat-label">收听中</view>
+        <view class="listen-stat-label">我收听的人</view>
       </view>
       <view class="listen-stat listen-stat-clickable" @click="openLit" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">✨</view>
         <view class="listen-stat-num grad-gold">{{ litCount }}</view>
-        <view class="listen-stat-label">被点亮</view>
-      </view>
-      <view class="listen-stat listen-stat-clickable" @click="openListeners" hover-class="listen-stat-hover">
-        <view class="listen-stat-icon">📻</view>
-        <view class="listen-stat-num grad-purple">{{ listenersCount }}</view>
-        <view class="listen-stat-label">被收听</view>
+        <view class="listen-stat-label">我点亮的星</view>
       </view>
       <view class="listen-stat listen-stat-clickable" @click="openAtlas" hover-class="listen-stat-hover">
         <view class="listen-stat-icon">🌠</view>
         <view class="listen-stat-num grad-cyan">{{ capturedCount }}</view>
         <view class="listen-stat-label">小行星图鉴</view>
-      </view>
-    </view>
-
-    <!-- Inbox Popup -->
-    <view class="inbox-modal-overlay" v-if="showInbox" :class="{ show: showInbox }" @click="closeInbox">
-      <view class="inbox-modal" @click.stop>
-        <view class="inbox-modal-head">
-          <view class="inbox-modal-title">收件箱</view>
-          <view class="inbox-modal-close" @click="closeInbox">✕</view>
-        </view>
-
-        <view v-if="inboxItems.length === 0" class="listen-empty">
-          <view class="listen-empty-icon">📻</view>
-          <view class="listen-empty-text">暂无消息<br>当有人收听你时，新信件将推送到这里</view>
-        </view>
-
-        <scroll-view v-else scroll-y class="inbox-scroll">
-          <view
-            v-for="item in inboxItems"
-            :key="item.id"
-            class="inbox-card"
-            :class="{ unread: !item.read }"
-            @click="openInboxItem(item)"
-          >
-            <view class="inbox-avatar">{{ item.avatar }}</view>
-            <view class="inbox-info">
-              <view class="inbox-from">
-                <text class="inbox-from-name">{{ item.from }}</text>
-                <text v-if="!item.read" class="inbox-unread-dot">●</text>
-              </view>
-              <view class="inbox-preview">{{ item.preview }}</view>
-              <view class="inbox-meta">
-                <text class="inbox-time">{{ item.time }}</text>
-                <text class="inbox-type-tag" :class="item.typeClass">{{ item.typeLabel }}</text>
-              </view>
-            </view>
-            <view class="inbox-action">
-              <text class="inbox-arrow">›</text>
-            </view>
-          </view>
-        </scroll-view>
       </view>
     </view>
 
@@ -117,46 +67,21 @@
     <view class="atlas-modal-overlay" v-if="showSubs" :class="{ show: showSubs }" @click="closeSubs">
       <view class="atlas-modal" @click.stop>
         <view class="inbox-modal-head">
-          <view class="inbox-modal-title">我的收听</view>
+          <view class="inbox-modal-title">我收听的人</view>
           <view class="inbox-modal-close" @click="closeSubs">✕</view>
         </view>
         <view v-if="subscriptions.length === 0" class="listen-empty">
           <view class="listen-empty-icon">📡</view>
-          <view class="listen-empty-text">还没有收听任何信件<br>去"漫游"页点击收听按钮开始吧</view>
+          <view class="listen-empty-text">还没有收听任何信件<br>去"星系"页点击收听按钮开始吧</view>
         </view>
         <scroll-view v-else scroll-y class="inbox-scroll">
-          <view v-for="sub in subscriptions" :key="sub.id" class="subs-card" @click="openLetterBySub(sub)">
+          <view v-for="sub in subscriptions" :key="sub.id" class="subs-card">
             <view class="subs-avatar">{{ sub.avatar }}</view>
             <view class="subs-info">
-              <view class="subs-from">{{ sub.from }}<text class="subs-asteroid">{{ sub.asteroid }}</text></view>
-              <view class="subs-text">{{ sub.content }}</view>
+              <view class="subs-asteroid">{{ sub.asteroid }}</view>
               <view class="subs-time">收听于 {{ sub.time }}</view>
             </view>
             <button class="subs-unsub-btn" @click.stop="unsubscribe(sub.id)">取消收听</button>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
-
-    <!-- Listeners Popup -->
-    <view class="atlas-modal-overlay" v-if="showListeners" :class="{ show: showListeners }" @click="closeListeners">
-      <view class="atlas-modal" @click.stop>
-        <view class="inbox-modal-head">
-          <view class="inbox-modal-title">收听我的人</view>
-          <view class="inbox-modal-close" @click="closeListeners">✕</view>
-        </view>
-        <view v-if="listeners.length === 0" class="listen-empty">
-          <view class="listen-empty-icon">📻</view>
-          <view class="listen-empty-text">还没有人收听你<br>去"漫游"页分享你的星频，吸引旅人吧</view>
-        </view>
-        <scroll-view v-else scroll-y class="inbox-scroll">
-          <view v-for="l in listeners" :key="l.id" class="atlas-card">
-            <view class="atlas-avatar">{{ l.avatar }}</view>
-            <view class="atlas-info">
-              <view class="atlas-name">{{ l.from }}</view>
-              <view class="atlas-text">{{ l.asteroid }}</view>
-              <view class="atlas-time">收听于 {{ l.time }}</view>
-            </view>
           </view>
         </scroll-view>
       </view>
@@ -171,14 +96,14 @@
         </view>
         <view v-if="litList.length === 0" class="listen-empty">
           <view class="listen-empty-icon">✨</view>
-          <view class="listen-empty-text">还没有点亮任何星<br>去"漫游"或收件箱点亮你喜欢的信件吧</view>
+          <view class="listen-empty-text">还没有点亮任何星<br>去"星系"或收件箱点亮你喜欢的信件吧</view>
         </view>
         <scroll-view v-else scroll-y class="inbox-scroll">
-          <view v-for="l in litList" :key="l.id" class="atlas-card">
+          <view v-for="l in litList" :key="l.id" class="atlas-card" @click="openLetterBySub(l)">
             <view class="atlas-avatar">{{ l.avatar }}</view>
             <view class="atlas-info">
-              <view class="atlas-name">{{ l.from }}</view>
-              <view class="atlas-text">{{ l.asteroid }}</view>
+              <view class="atlas-name">{{ l.from }}<text class="atlas-sub">{{ l.asteroid }}</text></view>
+              <view class="atlas-text">{{ l.content }}</view>
               <view class="atlas-time">点亮于 {{ l.time }}</view>
             </view>
           </view>
@@ -196,25 +121,26 @@
 
       <view v-if="subscriptions.length === 0" class="listen-empty">
         <view class="listen-empty-icon">📡</view>
-        <view class="listen-empty-text">还没有收听任何人<br>去"漫游"页点击收听按钮开始吧</view>
+        <view class="listen-empty-text">还没有收听任何人<br>去"星系"页点击收听按钮开始吧</view>
       </view>
 
-      <view v-else class="subs-list">
-        <view
-          v-for="sub in subscriptions"
-          :key="sub.id"
-          class="subs-card"
-          @click="openLetterBySub(sub)"
-        >
-          <view class="subs-avatar">{{ sub.avatar }}</view>
-          <view class="subs-info">
-            <view class="subs-from">{{ sub.from }}<text class="subs-asteroid">{{ sub.asteroid }}</text></view>
-            <view class="subs-text">{{ sub.content }}</view>
-            <view class="subs-time">收听于 {{ sub.time }}</view>
+        <view v-else class="subs-list">
+          <view
+            v-for="sub in subscriptions"
+            :key="sub.id"
+            class="subs-card"
+            :class="{ 'is-reversed': !sub.viewed }"
+            @click="openLetterBySub(sub)"
+          >
+            <view class="subs-avatar">{{ sub.avatar }}</view>
+            <view class="subs-info">
+              <view class="subs-from">{{ sub.viewed ? sub.from : sub.garbleFrom }}<text class="subs-asteroid">{{ sub.asteroid }}</text></view>
+              <view class="subs-text">{{ sub.viewed ? sub.content : sub.garbleContent }}</view>
+              <view class="subs-time">发布于 {{ sub.time }}</view>
+            </view>
+            <view v-if="!sub.viewed" class="subs-new-tag">🔒 新信号 · 点击解密</view>
           </view>
-          <button class="subs-unsub-btn" @click.stop="unsubscribe(sub.id)">取消收听</button>
         </view>
-      </view>
     </view>
 
     <!-- Letter Detail Modal -->
@@ -304,18 +230,27 @@ function formatDateTime(ts) {
   return `${formatDate(d)} ${hh}:${mm}`;
 }
 
+// 将文本打乱成“乱码”信号，空格/换行保留以维持结构感
+const garblePool = '█▓▒░✦✧⚡☄★☆♺♻⍰⍾⧫⬡◈⟁⌗▦▩⍢⍣⍤⍥⍨◇◆▢▣§¶†‡';
+function garble(text) {
+  if (!text) return '';
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === ' ' || ch === '\n') { out += ch; continue; }
+    out += garblePool[Math.floor(Math.random() * garblePool.length)];
+  }
+  return out;
+}
+
 export default {
   data() {
     return {
       subscriptions: [],
-      inboxItems: [],
       capturedAsteroids: [],
-      showInbox: false,
       showAtlas: false,
       showSubs: false,
-      showListeners: false,
       showLit: false,
-      listeners: [],
       litList: [],
       showModal: false,
       modalAvatar: '',
@@ -329,7 +264,6 @@ export default {
       modalSignalText: '',
       isModalLit: false,
       currentModalLetter: null,
-      listenersCount: 0,
     };
   },
   computed: {
@@ -340,9 +274,6 @@ export default {
       const app = getApp();
       const liked = app.globalData.likedLetterIds || new Set();
       return liked.size;
-    },
-    unreadCount() {
-      return this.inboxItems.filter(i => !i.read).length;
     },
     capturedCount() {
       return this.capturedAsteroids.length;
@@ -355,12 +286,6 @@ export default {
     this.renderPage();
   },
   methods: {
-    openInbox() {
-      this.showInbox = true;
-    },
-    closeInbox() {
-      this.showInbox = false;
-    },
     openAtlas() {
       this.showAtlas = true;
     },
@@ -373,12 +298,6 @@ export default {
     closeSubs() {
       this.showSubs = false;
     },
-    openListeners() {
-      this.showListeners = true;
-    },
-    closeListeners() {
-      this.showListeners = false;
-    },
     openLit() {
       this.showLit = true;
     },
@@ -388,7 +307,6 @@ export default {
     renderPage() {
       const app = getApp();
       const subs = app.globalData.mySubscriptions || [];
-      const inbox = app.globalData.inboxItems || [];
       const asteroids = app.globalData.capturedAsteroids || [];
 
       // Populate captured asteroids (newest first)
@@ -407,50 +325,27 @@ export default {
         const letter = sampleLetters.find(l => l.id === sub.letterId) || {};
         const raw = letter.content || '这封信的星图已飘远，无法再读取内容';
         const content = raw.replace(/\n/g, ' ').substring(0, 60) + (raw.length > 60 ? '...' : '');
+        const from = letter.from || sub.from || '未知旅人';
+        const viewed = sub.viewed !== false;
         return {
           id: sub.id,
           letterId: sub.letterId,
           avatar: letter.avatar || sub.avatar || '🌙',
-          from: letter.from || sub.from || '未知旅人',
+          from: from,
           asteroid: letter.asteroid || sub.asteroid || generateAsteroidId(),
           content: content,
+          // 未查看过的信件：把文字打乱成乱码，点击解密后才显示真实内容
+          garbleFrom: garble(from),
+          garbleContent: garble(content),
           time: sub.time || formatDate(new Date()),
+          // 刚推送且从未点开过的信件默认处于“乱码”状态；旧数据（无 viewed 字段）视为已读，避免历史信件突然乱码
+          viewed: viewed,
+          pushedAt: sub.pushedAt || 0,
         };
       });
 
-      // Populate inbox items
-      this.inboxItems = inbox.map(item => {
-        const letter = sampleLetters.find(l => l.id === item.letterId) || {};
-        const preview = letter.content
-          ? letter.content.replace(/\n/g, ' ').substring(0, 50) + '...'
-          : item.preview || '新信件信号';
-        return {
-          id: item.id,
-          letterId: item.letterId || letter.id,
-          avatar: letter.avatar || item.avatar || '🌙',
-          from: letter.from || item.from || '一位旅人',
-          preview: preview,
-          time: item.time || formatDate(new Date()),
-          read: item.read || false,
-          typeClass: item.type === 'newListener' ? 'tag-listen' : 'tag-letter',
-          typeLabel: item.type === 'newListener' ? '有人收听了你' : '新信件推送',
-        };
-      });
-
-      // Listeners (people who have subscribed to this user)
-      this.listeners = inbox
-        .filter(i => i.type === 'newListener')
-        .map(i => {
-          const letter = sampleLetters.find(l => l.id === i.letterId) || {};
-          return {
-            id: i.id,
-            avatar: letter.avatar || i.avatar || '🌙',
-            from: letter.from || i.from || '一位旅人',
-            asteroid: letter.asteroid || generateAsteroidId(),
-            time: i.time || formatDate(new Date()),
-          };
-        });
-      this.listenersCount = this.listeners.length;
+      // 新收到的信件排在最上面：优先按推送时间倒序，其次保持较新的在前
+      this.subscriptions.sort((a, b) => (b.pushedAt || 0) - (a.pushedAt || 0));
 
       // Lit letters (letters this user has lit)
       const litRecs = app.globalData.litRecords || [];
@@ -458,37 +353,19 @@ export default {
         .map(rec => {
           const letter = sampleLetters.find(l => l.id === rec.id);
           if (!letter) return null;
+          const raw = letter.content || '这封信的星图已飘远，无法再读取内容';
+          const content = raw.replace(/\n/g, ' ').substring(0, 40) + (raw.length > 40 ? '...' : '');
           return {
             id: rec.id,
+            letterId: letter.id,
             avatar: letter.avatar || '🌙',
             from: letter.from,
             asteroid: letter.asteroid || generateAsteroidId(),
+            content: content,
             time: rec.time ? formatDateTime(rec.time) : '未知时间',
           };
         })
         .filter(Boolean);
-    },
-    openInboxItem(item) {
-      // Close the inbox panel and open the letter
-      this.showInbox = false;
-
-      // Mark as read
-      const app = getApp();
-      const inbox = app.globalData.inboxItems || [];
-      const entry = inbox.find(i => i.id === item.id);
-      if (entry && !entry.read) {
-        entry.read = true;
-        app.globalData.saveState();
-      }
-      item.read = true;
-
-      // Show letter modal
-      const letter = sampleLetters.find(l => l.id === item.letterId);
-      if (letter) {
-        this.showLetterModal(letter);
-      } else {
-        uni.showToast({ title: '信件信号已收录', icon: 'none', duration: 1500 });
-      }
     },
     showLetterModal(letter) {
       const app = getApp();
@@ -552,6 +429,17 @@ export default {
       }
     },
     openLetterBySub(sub) {
+      // 第一次点击：把信件“正过来”（标记为已查看），之后不再处于反转状态
+      if (sub.viewed !== undefined && sub.viewed !== true) {
+        const app = getApp();
+        const orig = (app.globalData.mySubscriptions || []).find(s => s.id === sub.id);
+        if (orig) {
+          orig.viewed = true;
+          orig.pushedAt = orig.pushedAt || Date.now();
+          app.globalData.saveState();
+        }
+        sub.viewed = true;
+      }
       const letter = sampleLetters.find(l => l.id === sub.letterId);
       if (letter) this.showLetterModal(letter);
     },
@@ -719,7 +607,8 @@ export default {
   border:1px solid rgba(0,229,255,.15);
 }
 .atlas-info { flex:1; min-width:0; }
-.atlas-name { font-size:12px; color:var(--cyan); font-weight:600; letter-spacing:.5px; }
+.atlas-name { font-size:12px; color:var(--cyan); font-weight:600; letter-spacing:.5px; display:flex; align-items:center; gap:6px; }
+.atlas-sub { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; }
 .atlas-text { font-size:14px; line-height:1.7; color:var(--text-1); margin-top:6px; }
 .atlas-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:8px; }
 
@@ -744,10 +633,28 @@ export default {
 /* Subscriptions */
 .subs-list { display:flex; flex-direction:column; gap:10px; }
 .subs-card {
+  position:relative;
   display:flex; align-items:center; gap:12px; padding:14px 16px;
   background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
   transition:all .3s;
   box-shadow:0 2px 12px rgba(0,0,0,.2);
+  overflow:hidden;
+}
+/* 刚推送、尚未点开过的信件：乱码 + 高亮提示 */
+.subs-card.is-reversed {
+  border-color:rgba(0,229,255,.45);
+  background:rgba(0,229,255,.05);
+  box-shadow:0 2px 18px rgba(0,229,255,.18);
+  padding-top:24px;
+}
+.subs-text { font-family:'SF Mono',monospace; letter-spacing:1px; }
+.subs-card.is-reversed .subs-text { color:var(--cyan); }
+.subs-new-tag {
+  position:absolute; top:6px; left:50%; transform:translateX(-50%);
+  font-size:10px; font-weight:700; color:#fff; white-space:nowrap; z-index:2;
+  padding:2px 10px; border-radius:100px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  box-shadow:0 2px 10px rgba(0,229,255,.3);
 }
 .subs-avatar {
   width:40px; height:40px; border-radius:50%; flex-shrink:0;
@@ -758,7 +665,7 @@ export default {
 .subs-info { flex:1; min-width:0; }
 .subs-from { font-size:14px; font-weight:600; color:var(--text-1); display:flex; align-items:center; gap:6px; }
 .subs-asteroid { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; }
-.subs-text { font-size:13px; line-height:1.7; color:var(--text-2); margin-top:6px; }
+.subs-text { font-size:13px; line-height:1.7; color:var(--text-2); margin-top:6px; word-break:break-all; overflow-wrap:anywhere; }
 .subs-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:8px; }
 .subs-unsub-btn {
   padding:8px 16px; border-radius:100px; border:1px solid rgba(255,107,157,.2);

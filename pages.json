@@ -11,7 +11,7 @@
 		{
 			"path": "pages/wander/wander",
 			"style": {
-				"navigationBarTitleText": "漫游",
+				"navigationBarTitleText": "星系",
 				"navigationStyle": "custom",
 				"backgroundColor": "#050514"
 			}

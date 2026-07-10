@@ -34,12 +34,12 @@
     </view>
 
     <view class="keyword-section">
-      <view class="keyword-label"><text class="icon">🏷️</text> <text>标记主题关键字</text> <text style="color:var(--text-3);font-size:11px;font-weight:400;">（送达前仅显示关键字，内容加密）</text></view>
+      <view class="keyword-label"><text class="icon">🏷️</text> <text>标记主题关键字</text> <text style="color:var(--text-3);font-size:11px;font-weight:400;">（请注意，标题关键字会展示给对方！！！）</text></view>
       <input
         class="keyword-input"
         type="text"
         v-model="current.keyword"
-        placeholder="如：给25岁的自己 / 考研纪念 / 写给爱情"
+        placeholder="如：给25岁的自己 / 考研纪念 / 写给爱情，最长15个字哦 ~ "
         :maxlength="20"
         :adjust-position="true"
       />
@@ -381,9 +381,9 @@ export default {
     toggleVisibility() {
       this.current.isEncrypted = !this.current.isEncrypted;
       if (this.current.isEncrypted) {
-        this.showToast('🔒 加密信件不会出现在「漫游」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
+        this.showToast('🔒 加密信件不会出现在「星系」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
       } else {
-        this.showToast('🌐 信件已设为公开，将出现在「漫游」星海');
+        this.showToast('🌐 信件已设为公开，将出现在「星系」星海');
       }
     },
     showToast(msg) {

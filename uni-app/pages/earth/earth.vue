@@ -97,7 +97,7 @@
       <view class="earth-subtab-content" :class="{ active: activeSubtab === 'liked' }">
         <view v-if="likedLetters.length === 0" class="earth-empty">
           <view class="earth-empty-icon">✨</view>
-          <view class="earth-empty-text">还没有点亮过信件<br>去"漫游"页点亮一颗星吧</view>
+          <view class="earth-empty-text">还没有点亮过信件<br>去"星系"页点亮一颗星吧</view>
         </view>
         <view class="liked-list">
           <view v-for="l in likedLetters" :key="l.id" class="liked-card" @click="viewLikedLetter(l)">

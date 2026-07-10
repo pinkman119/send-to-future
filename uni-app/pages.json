@@ -11,7 +11,7 @@
 		{
 			"path": "pages/wander/wander",
 			"style": {
-				"navigationBarTitleText": "漫游",
+				"navigationBarTitleText": "星系",
 				"navigationStyle": "custom",
 				"backgroundColor": "#050514"
 			}
@@ -46,7 +46,7 @@
 			},
 			{
 				"pagePath": "pages/wander/wander",
-				"text": "漫游",
+				"text": "星系",
 				"iconPath": "static/tab-wander.png",
 				"selectedIconPath": "static/tab-wander-active.png"
 			},

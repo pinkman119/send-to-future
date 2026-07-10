@@ -1,6 +1,18 @@
 <template>
   <view class="earth-page">
     <star-sky />
+
+    <!-- 顶部操作：信号箱 + 解码 -->
+    <view class="earth-top-actions">
+      <view class="earth-decode-trigger" @click="openDecode" hover-class="inbox-trigger-hover">
+        <text class="inbox-trigger-icon">🔓</text>
+      </view>
+      <view class="earth-inbox-trigger" @click="openInbox" hover-class="inbox-trigger-hover">
+        <text class="inbox-trigger-icon">📩</text>
+        <text v-if="unreadCount > 0" class="inbox-trigger-badge">{{ unreadCount }}</text>
+      </view>
+    </view>
+
     <view class="earth-header">
       <view class="earth-avatar-wrap" hover-class="earth-avatar-hover" @click="openPlanetModal">
         <view class="earth-avatar-ring"></view>
@@ -35,21 +47,6 @@
         <text class="earth-sat-tag" v-if="1 > 0" @click.stop="showSatelliteTip">🛰️ ×{{ satelliteCount + 1 }}</text>
       </view>
       <view class="earth-id">{{ userId }}</view>
-    </view>
-
-    <view class="earth-stats">
-      <view class="earth-stat">
-        <view class="earth-stat-num grad">{{ statSent }}</view>
-        <view class="earth-stat-label">已发射信件</view>
-      </view>
-      <view class="earth-stat">
-        <view class="earth-stat-num grad-gold">{{ statLit }}</view>
-        <view class="earth-stat-label">已点亮</view>
-      </view>
-      <view class="earth-stat">
-        <view class="earth-stat-num grad">{{ statTraveling }}</view>
-        <view class="earth-stat-label">旅行中</view>
-      </view>
     </view>
 
     <!-- Planet & Satellite selector -->
@@ -102,16 +99,28 @@
 
     <!-- Sub-tab switcher -->
     <view class="earth-section">
+      <view class="earth-stats">
+        <view class="earth-listened" @click="openListeners" hover-class="earth-listened-hover">
+          <text class="earth-listened-icon">📻</text>
+          <text class="earth-listened-num">{{ listenersCount }}</text>
+          <text class="earth-listened-label">人收听了你</text>
+        </view>
+        <view class="earth-listened" @click="openInbox" hover-class="earth-listened-hover">
+          <text class="earth-listened-icon">✨</text>
+          <text class="earth-listened-num">{{ litCount }}</text>
+          <text class="earth-listened-label">次点亮</text>
+        </view>
+      </view>
       <view class="earth-subtabs">
         <view class="earth-subtab" :class="{ active: activeSubtab === 'sent' }" @click="switchSubtab('sent')">
           <text class="icon">🚀</text>
-          <text>我的</text>
+          <text>我寄出的</text>
           <text class="earth-subtab-count">{{ sentCount }}</text>
         </view>
         <view class="earth-subtab" :class="{ active: activeSubtab === 'liked' }" @click="switchSubtab('liked')">
           <text class="icon">✨</text>
-          <text>点亮</text>
-          <text class="earth-subtab-count">{{ likedCount }}</text>
+          <text>寄给我的</text>
+          <text class="earth-subtab-count">{{ receivedCount }}</text>
         </view>
         <view class="earth-subtab" :class="{ active: activeSubtab === 'coords' }" @click="switchSubtab('coords')">
           <text class="icon">📡</text>
@@ -169,24 +178,36 @@
         </view>
       </view>
 
-      <!-- Liked List -->
+      <!-- Received List (寄给我的) -->
       <view class="earth-subtab-content" :class="{ active: activeSubtab === 'liked' }">
-        <view v-if="likedLetters.length === 0" class="earth-empty">
+        <view v-if="receivedLetters.length === 0" class="earth-empty">
           <view class="earth-empty-icon">✨</view>
-          <view class="earth-empty-text">还没有点亮过信件<br>去"漫游"页点亮一颗星吧</view>
+          <view class="earth-empty-text">还没有收到任何信件<br>等待穿越时空的星光抵达吧</view>
         </view>
-        <view class="liked-list">
-          <view v-for="l in likedLetters" :key="l.id" class="liked-card" @click="viewLikedLetter(l)">
-            <view class="liked-avatar">{{ l.avatar || '🌙' }}</view>
-            <view class="liked-info">
-              <view class="liked-from">
-                {{ l.from }}
-                <text v-if="l._signalIcon" style="font-size:10px;">{{ l._signalIcon }} 强烈信号</text>
+        <view class="received-list">
+          <view
+            v-for="r in receivedLetters"
+            :key="r.id"
+            class="received-card"
+            :class="{ locked: !r._unlocked }"
+            @click="viewReceivedLetter(r)"
+          >
+            <view class="received-avatar" :class="{ locked: !r._unlocked }">{{ r.avatar || '🪐' }}</view>
+            <view class="received-info">
+              <view class="received-from">{{ r.planetId }}</view>
+              <view v-if="r._unlocked" class="received-preview">{{ r._preview }}</view>
+              <view v-else class="received-keyword">
+                <text class="received-keyword-icon">🏷️</text>
+                <text class="received-keyword-text">{{ r.keyword || '未标记主题' }}</text>
               </view>
-              <view class="liked-asteroid">{{ l.asteroid }}</view>
-              <view class="liked-preview">{{ l._preview }}</view>
+              <view class="received-unlock-row">
+                <text class="received-unlock-icon">{{ r._unlocked ? '🔓' : '⏳' }}</text>
+                <text class="received-unlock-time">{{ r._unlockText }}</text>
+              </view>
             </view>
-            <view class="liked-likes">💡 {{ l._likeStr }}</view>
+            <view class="received-status" :class="r._unlocked ? 'unlocked' : 'sealed'">
+              {{ r._unlocked ? '✓ 已解密' : '🔒 加密中' }}
+            </view>
           </view>
         </view>
       </view>
@@ -261,7 +282,7 @@
         <view class="modal-locked" v-else>
           <view class="modal-locked-icon">🔒</view>
           <view class="modal-locked-title">信件仍在旅途中</view>
-          <view class="modal-locked-desc">这封信尚未送达，送达后才能在「我的」中查看完整内容</view>
+          <view class="modal-locked-desc">这封信尚未送达，送达后才能在「我寄出的」中查看完整内容</view>
           <view class="modal-locked-progress">
             <view class="modal-locked-bar">
               <view class="modal-locked-fill" :style="{ width: (currentModalLetter ? currentModalLetter._percent : 0) + '%' }"></view>
@@ -282,9 +303,150 @@
             </button>
           </view>
         </view>
+        <view class="modal-like-bar" v-else-if="modalIsMine && !modalLocked">
+          <view class="modal-like-count" @click="openLitList">
+            <view class="modal-like-num" :class="{ lit: isModalLit }">{{ modalLikeNum }}</view>
+            <view class="modal-like-label">人点亮了这封信 · 点击查看</view>
+          </view>
+          <view class="modal-footer" style="margin:0;">
+            <button class="modal-btn close" @click="closeModal">关闭</button>
+            <button class="modal-btn light" :class="{ lit: isModalLit }" @click="toggleLight">
+              {{ isModalLit ? '✨ 已点亮' : '💡 点亮' }}
+            </button>
+          </view>
+        </view>
         <view class="modal-footer" v-else style="margin-top:18px;">
           <button class="modal-btn close" @click="closeModal">关闭</button>
         </view>
+      </view>
+    </view>
+
+    <!-- Listeners Popup -->
+    <view class="atlas-modal-overlay" v-if="showListeners" :class="{ show: showListeners }" @click="closeListeners">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">收听我的人</view>
+          <view class="inbox-modal-close" @click="closeListeners">✕</view>
+        </view>
+
+        <view v-if="listeners.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">📻</view>
+          <view class="listen-empty-text">还没有人收听你<br>去"星系"页分享你的星频，吸引旅人吧</view>
+        </view>
+
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view v-for="l in listeners" :key="l.id" class="atlas-card">
+            <view class="atlas-avatar">{{ l.avatar }}</view>
+            <view class="atlas-info">
+              <view class="atlas-name">{{ l.from }}</view>
+              <view class="atlas-planet">{{ l.planetId }}</view>
+              <view class="atlas-time">收听于 {{ l.time }}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- 信号箱 Popup (moved from 信号 page) -->
+    <view class="inbox-modal-overlay" v-if="showInbox" :class="{ show: showInbox }" @click="closeInbox">
+      <view class="inbox-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">信号箱</view>
+          <view class="inbox-modal-close" @click="closeInbox">✕</view>
+        </view>
+
+        <view v-if="inboxItems.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">📻</view>
+          <view class="listen-empty-text">暂无消息<br>当有人收听你或点亮你的信时，会推送到这里</view>
+        </view>
+
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view
+            v-for="item in inboxItems"
+            :key="item.id"
+            class="inbox-card"
+            :class="{ unread: !item.read, read: item.read }"
+            @click="markInboxRead(item)"
+          >
+            <view class="inbox-avatar">{{ item.avatar }}</view>
+            <view class="inbox-info">
+              <view class="inbox-from">
+                <text class="inbox-from-name">{{ item.from }}</text>
+                <text v-if="!item.read" class="inbox-new-badge">NEW</text>
+              </view>
+              <view class="inbox-action-text" :class="item.actionClass">{{ item.actionText }}</view>
+              <view class="inbox-meta">
+                <text class="inbox-time">{{ item.time }}</text>
+                <text class="inbox-type-tag" :class="item.typeClass">{{ item.typeLabel }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- 解码 Popup -->
+    <view class="decode-modal-overlay" v-if="showDecode" :class="{ show: showDecode }" @click="closeDecode">
+      <view class="decode-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">解码</view>
+          <view class="inbox-modal-close" @click="closeDecode">✕</view>
+        </view>
+
+        <view class="decode-body" v-if="!decodedLetter">
+          <view class="decode-hint">输入或粘贴一串代码，解码一封跨越星海的信件</view>
+          <textarea class="decode-input" v-model="decodeInput" placeholder="在此输入代码，例如 L06、EARTH-8841 …" :maxlength="200" auto-height />
+          <view class="decode-tools">
+            <view class="decode-paste" @click="pasteCode">📋 粘贴</view>
+          </view>
+          <button class="decode-btn" @click="decodeLetter">解码</button>
+        </view>
+
+        <view class="decode-body" v-else>
+          <view class="decode-result-head">
+            <text class="decode-result-title">{{ decodedLetter.title }}</text>
+            <text class="decode-result-planet">{{ decodedLetter.planetId }}</text>
+          </view>
+
+          <view v-if="decodedLetter.locked" class="decode-locked">
+            <view class="decode-locked-icon">🔒</view>
+            <view class="decode-locked-text">这封信尚未抵达解封日期</view>
+            <view class="decode-locked-date">预计解封：{{ decodedLetter.unlockDateText }}</view>
+            <view class="decode-garble">{{ decodedLetter.garbled }}</view>
+          </view>
+
+          <view v-else class="decode-content">
+            <view class="decode-content-text">{{ decodedLetter.content }}</view>
+          </view>
+
+          <button class="decode-btn decode-btn-ghost" @click="resetDecode">再解一封</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 点亮列表 Popup -->
+    <view class="atlas-modal-overlay" v-if="showLitList" :class="{ show: showLitList }" @click="closeLitList">
+      <view class="atlas-modal" @click.stop>
+        <view class="inbox-modal-head">
+          <view class="inbox-modal-title">点亮这封信的人</view>
+          <view class="inbox-modal-close" @click="closeLitList">✕</view>
+        </view>
+
+        <view v-if="litList.length === 0" class="listen-empty">
+          <view class="listen-empty-icon">✨</view>
+          <view class="listen-empty-text">还没有人点亮这封信<br>点亮它，让更多星光看见</view>
+        </view>
+
+        <scroll-view v-else scroll-y class="inbox-scroll">
+          <view v-for="(u, idx) in litList" :key="idx" class="atlas-card">
+            <view class="atlas-avatar">{{ u.avatar }}</view>
+            <view class="atlas-info">
+              <view class="atlas-name">{{ u.planetId === userId ? '我（来自 ' + userId + '）' : '一位旅人' }}</view>
+              <view class="atlas-planet">{{ u.planetId }}</view>
+              <view class="atlas-time">点亮于 {{ u.time }}</view>
+            </view>
+          </view>
+        </scroll-view>
       </view>
     </view>
   </view>
@@ -323,6 +485,13 @@ function getSignalTier(likes) {
   return 0;
 }
 
+function genPlanetCode(seed) {
+  let h = 0;
+  const s = String(seed || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return 'EARTH-' + String(h % 100000).padStart(5, '0');
+}
+
 function formatLikeCount(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
@@ -336,6 +505,27 @@ function formatDate(d) {
   return `${y}.${m}.${day}`;
 }
 
+const planetLitAvatars = ['🪐','🌕','🌖','🌗','🌘','☄️','🌠','🌟','⭐','🌌','🛸','👾','🛰️','🌝','🌚'];
+const planetLitNames = ['MARS','LUNA','VENUS','JUPITER','SATURN','NEPTUNE','PLUTO','CERES','ORION','ANDROMEDA','POLARIS','VEGA','SIRIUS','ALTAIR'];
+function randPlanetId() {
+  const n = planetLitNames[Math.floor(Math.random() * planetLitNames.length)];
+  return n + '-' + String(Math.floor(Math.random() * 90000) + 10000);
+}
+function genDemoLitUsers(count) {
+  const list = [];
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now - Math.floor(Math.random() * 150) * dayMs - Math.floor(Math.random() * dayMs));
+    list.push({
+      avatar: planetLitAvatars[Math.floor(Math.random() * planetLitAvatars.length)],
+      planetId: randPlanetId(),
+      time: formatDate(d),
+    });
+  }
+  return list;
+}
+
 function getDateDiff(futureDate) {
   const now = new Date();
   const diff = futureDate - now;
@@ -345,11 +535,37 @@ function getDateDiff(futureDate) {
   return `${Math.floor(days / 365)} 年`;
 }
 
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+function garble(text) {
+  if (!text) return '';
+  const pool = '█▓▒░✦✧⚡☄★☆♺♻⍰⍾⧫⬡◈⟁⌗▦▩⍢⍣⍤⍥⍨◇◆▢▣§¶†‡';
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === ' ' || ch === '\n') { out += ch; continue; }
+    out += pool[Math.floor(Math.random() * pool.length)];
+  }
+  return out;
+}
+
 export default {
   data() {
     return {
       userId: '',
       listenersCount: 0,
+      listeners: [],
+      showListeners: false,
+      showInbox: false,
+      inboxItems: [],
+      showDecode: false,
+      decodeInput: '',
+      decodedLetter: null,
       satDurations: ['12s', '21s', '30s', '16s', '25s'],
       satDelays: ['0s', '-5s', '-12s', '-3s', '-9s'],
       satRadii: [50, 60, 70, 80, 90],
@@ -364,6 +580,7 @@ export default {
       activeSubtab: 'sent',
       sentLetters: [],
       likedLetters: [],
+      receivedLetters: [],
       myCoords: [],
       showCoordEditor: false,
       editingCoordId: null,
@@ -386,25 +603,23 @@ export default {
       currentModalLetter: null,
       modalIsMine: false,
       modalLocked: false,
+      litList: [],
+      showLitList: false,
     };
   },
   computed: {
-    statSent() { return this.sentLetters.length; },
-    statLit() {
-      const app = getApp();
-      const liked = app.globalData.likedLetterIds || new Set();
-      return liked.size;
-    },
-    statTraveling() {
-      return this.sentLetters.filter(l => !l._isDelivered).length;
-    },
     sentCount() { return this.sentLetters.length; },
+    litCount() {
+      return (this.sentLetters || []).reduce((sum, l) => sum + (Number(l.likes) || 0), 0);
+    },
     likedCount() {
       const app = getApp();
       const liked = app.globalData.likedLetterIds || new Set();
       return liked.size;
     },
+    receivedCount() { return this.receivedLetters.length; },
     coordsCount() { return this.myCoords.length; },
+    unreadCount() { return this.inboxItems.filter(i => !i.read).length; },
     satelliteCount() {
       return Math.min(5, Math.max(1, this.listenersCount));
     },
@@ -475,7 +690,82 @@ export default {
       }
       this.listenersCount = listeners;
       this.currentPlanetId = app.globalData.myPlanet || 'euaf';
+
+      // 信号箱 demo 数据（收听者 + 点亮者），仅首次初始化
+      let inbox = app.globalData.inboxItems || [];
+      if (inbox.length === 0) {
+        const now3 = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        const dAgo = (n) => formatDate(new Date(now3 - n * dayMs));
+        inbox = [
+          { id: 'INB-1', letterId: 'L01', type: 'newListener', from: '一位北漂旅人', avatar: '🧑‍🚀', planetId: 'EARTH-12138', time: dAgo(2), read: false },
+          { id: 'INB-2', letterId: 'L06', type: 'newLit', from: '一位勇敢的人', avatar: '🧙‍♀️', planetId: 'EARTH-88521', time: dAgo(5), read: false },
+          { id: 'INB-3', letterId: 'L03', type: 'newListener', from: '一位创业者', avatar: '🧑‍💼', planetId: 'EARTH-30467', time: dAgo(9), read: true },
+          { id: 'INB-4', letterId: 'L11', type: 'newLit', from: '一位妻子', avatar: '👩‍💼', planetId: 'EARTH-55210', time: dAgo(14), read: true },
+        ];
+        app.globalData.inboxItems = inbox;
+        app.globalData.saveState();
+      } else if (!inbox.some(i => i.type === 'newLit')) {
+        // 已有数据但缺少「点亮者」消息，补一条未读的点亮消息，方便查看交互
+        const now4 = Date.now();
+        inbox.unshift({
+          id: 'INB-LIT-' + now4,
+          letterId: 'L06',
+          type: 'newLit',
+          from: '一位深夜的陌生人',
+          avatar: '🌟',
+          planetId: 'EARTH-' + Math.floor(Math.random() * 90000 + 10000),
+          time: formatDate(new Date(now4)),
+          read: false,
+        });
+        app.globalData.inboxItems = inbox;
+        app.globalData.saveState();
+      }
+
+      // Listeners (people who subscribed to this user) — 被收听
+      this.listeners = inbox
+        .filter(i => i.type === 'newListener')
+        .map(i => {
+          const letter = sampleLetters.find(l => l.id === i.letterId) || {};
+          return {
+            id: i.id,
+            planetId: i.planetId || genPlanetCode(i.id),
+            from: i.from || letter.from || '匿名旅人',
+            avatar: i.avatar || letter.avatar || '🌙',
+            text: i.text || letter.content || '',
+            time: i.time || formatDate(new Date()),
+          };
+        });
       this.currentPaletteIndex = (typeof app.globalData.satPalette === 'number') ? app.globalData.satPalette : 0;
+
+      // 信号箱 items（从「信号」页迁移过来）
+      this.inboxItems = inbox.map(item => {
+        const letter = sampleLetters.find(l => l.id === item.letterId) || {};
+        const preview = letter.content
+          ? letter.content.replace(/\n/g, ' ').substring(0, 60) + '...'
+          : item.preview || '新信件信号';
+        const isListener = item.type === 'newListener';
+        const isLit = item.type === 'newLit';
+        const letterName = letter.asteroid || letter.from || '一封信';
+        const actionText = letter.from
+          ? (isListener ? '收听了你的信 · ' + letterName
+            : isLit ? '点亮了你的信 · ' + letterName
+            : '')
+          : '';
+        return {
+          id: item.id,
+          letterId: item.letterId || letter.id,
+          avatar: item.avatar || letter.avatar || '🌙',
+          from: item.from || letter.from || '一位旅人',
+          actionText: actionText,
+          preview: preview,
+          time: item.time || formatDate(new Date()),
+          read: item.read || false,
+          actionClass: isLit ? 'action-lit' : '',
+          typeClass: isListener ? 'tag-listen' : (isLit ? 'tag-lit' : 'tag-letter'),
+          typeLabel: isListener ? '有人收听了你' : (isLit ? '有人点亮了你的信' : '新信件推送'),
+        };
+      });
 
       let sent = app.globalData.mySentLetters || [];
       if (sent.length === 0) {
@@ -487,12 +777,26 @@ export default {
           { id: 'DEMO3', content: '十年后的我：\n\n此刻的我25岁，在出租屋里写下这封信。窗外是城市的灯火，很亮，但不属于我。\n\n十年后你35岁了，不知道有没有属于自己的灯。', keyword: '25岁的独白', channel: 'sms', isEncrypted: false, sentDate: '2023.06.20', sentTimestamp: now - 740 * dayMs, deliveryDate: '2033.06.20', deliveryTimestamp: now + 2910 * dayMs, years: 10 },
           { id: 'DEMO4', content: '一年后的自己：\n\n谢谢你坚持了下来。不管现在结果如何，我都知道你尽力了。\n\n希望明年的今天，你会笑着读这封信。', keyword: '考研纪念', channel: 'mail', isEncrypted: true, sentDate: '2024.07.02', sentTimestamp: now - 365 * dayMs, deliveryDate: '2025.07.02', deliveryTimestamp: now - 5 * dayMs, years: 1 },
         ];
+        const demoLight = { DEMO1: 9, DEMO2: 4, DEMO3: 1, DEMO4: 18 };
+        sent.forEach(s => {
+          if (typeof s.likes !== 'number') {
+            s.likes = demoLight[s.id] || 0;
+            s.litUsers = genDemoLitUsers(s.likes);
+          }
+        });
         app.globalData.mySentLetters = sent;
         app.globalData.saveState();
       }
 
       const now = Date.now();
+      let litMigrated = false;
       this.sentLetters = sent.map(l => {
+        if (typeof l.likes !== 'number') { l.likes = 0; litMigrated = true; }
+        if (!Array.isArray(l.litUsers)) {
+          l.litUsers = genDemoLitUsers(Math.floor(Math.random() * 8));
+          l.likes = l.litUsers.length;
+          litMigrated = true;
+        }
         const hasDelivery = !!l.deliveryTimestamp;
         const isDelivered = hasDelivery ? now >= l.deliveryTimestamp : false;
         const totalDuration = hasDelivery ? l.deliveryTimestamp - l.sentTimestamp : 0;
@@ -528,6 +832,7 @@ export default {
           _contactsSummary: contactsSummary,
         };
       });
+      if (litMigrated) { app.globalData.mySentLetters = sent; app.globalData.saveState(); }
 
       // Liked
       const likedSet = app.globalData.likedLetterIds || new Set();
@@ -545,6 +850,32 @@ export default {
         }
       }
       this.likedLetters = likedArr;
+
+      // Received letters (别人寄给我的信，需到解密时间才能查看)
+      let received = app.globalData.receivedLetters || [];
+      if (received.length === 0) {
+        const now2 = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        received = [
+          { id: 'R01', planetId: 'EARTH-12138', avatar: '🪐', keyword: '时光的约定', sentTimestamp: now2 - 90 * dayMs, unlockTimestamp: now2 - 3 * dayMs, content: '嘿，收到这封信的你：\n\n还记得三个月前的那个约定吗？我说过要成为更好的人。\n\n如果你正在读这封信，说明时间到了。希望此刻的你，正如我期待的那样闪闪发光。' },
+          { id: 'R02', planetId: 'EARTH-88521', avatar: '🌕', keyword: '封存的心意', sentTimestamp: now2 - 10 * dayMs, unlockTimestamp: now2 + 45 * dayMs, content: '给未来的你：\n\n这封信被我封存了很久，只有当星光穿越了足够的距离，它才会抵达你手中。\n\n愿那时的你，已经放下了现在的焦虑。' },
+          { id: 'R03', planetId: 'EARTH-30467', avatar: '🔴', keyword: '写给一年后的你', sentTimestamp: now2 - 30 * dayMs, unlockTimestamp: now2 + 300 * dayMs, content: '写给一年后的你：\n\n此刻我不知道你会变成什么样子，但我把这份心意交给了时间。\n\n请一定要幸福。' },
+          { id: 'R04', planetId: 'EARTH-55210', avatar: '🌏', keyword: '为你而亮的星', sentTimestamp: now2 - 200 * dayMs, unlockTimestamp: now2 - 40 * dayMs, content: '亲爱的你：\n\n当你读到这封信时，我们之间已经隔了很长的时光。\n\n谢谢你一直没有放弃，谢谢你走到了这里。这颗星，为你而亮。' },
+        ];
+        app.globalData.receivedLetters = received;
+        app.globalData.saveState();
+      }
+      this.receivedLetters = received.map(r => {
+        const unlocked = now >= r.unlockTimestamp;
+        return {
+          ...r,
+          _unlocked: unlocked,
+          _preview: r.content.replace(/\n/g, ' ').substring(0, 40) + (r.content.length > 40 ? '...' : ''),
+          _unlockText: unlocked
+            ? `已于 ${formatDate(new Date(r.unlockTimestamp))} 解密`
+            : `${formatDate(new Date(r.unlockTimestamp))} 解密`,
+        };
+      });
 
       // Coords
       this.myCoords = (app.globalData.myCoords || []).map(c => {
@@ -579,6 +910,85 @@ export default {
     },
     switchSubtab(tab) {
       this.activeSubtab = tab;
+    },
+    openListeners() {
+      this.showListeners = true;
+    },
+    closeListeners() {
+      this.showListeners = false;
+    },
+    openInbox() {
+      this.showInbox = true;
+    },
+    closeInbox() {
+      this.showInbox = false;
+    },
+    openDecode() {
+      this.showDecode = true;
+    },
+    closeDecode() {
+      this.showDecode = false;
+    },
+    pasteCode() {
+      const that = this;
+      uni.getClipboardData({
+        success(res) { that.decodeInput = res.data || ''; },
+        fail() { uni.showToast({ title: '粘贴失败，请手动输入', icon: 'none' }); }
+      });
+    },
+    decodeLetter() {
+      const raw = (this.decodeInput || '').trim();
+      if (!raw) {
+        uni.showToast({ title: '请先输入或粘贴一串代码', icon: 'none' });
+        return;
+      }
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const upper = raw.toUpperCase();
+      const idx = sampleLetters.findIndex(l => l.id.toUpperCase() === upper);
+      let title, planetId, content, unlockTs;
+      if (idx >= 0) {
+        const hit = sampleLetters[idx];
+        title = hit.from;
+        planetId = 'EARTH-' + (10000 + (hashStr(hit.id) % 90000));
+        content = hit.content;
+        const offsets = [-30, 5, -90, 12, -3, 45, -15, 200, -120, 8, 60, -7, 30, -10, 90];
+        unlockTs = now + offsets[idx % offsets.length] * dayMs;
+      } else {
+        const seed = hashStr(raw);
+        const planets = ['EARTH', 'MARS', 'LUNA', 'VENUS', 'JUPITER', 'SATURN', 'NEPTUNE', 'PLUTO', 'CERES', 'ORION', 'ANDROMEDA', 'POLARIS'];
+        planetId = planets[seed % planets.length] + '-' + (10000 + (seed % 90000));
+        title = '来自星海的信 · ' + raw.slice(0, 8);
+        content = '这是用代码「' + raw + '」解码出的一封星际信件。\n\n在宇宙的另一头，有人把心事折进光里，跨越星海抵达你的星球。愿你读到的每一句话，都被温柔以待。';
+        const offsetDays = (seed % 66) - 25;
+        unlockTs = now + offsetDays * dayMs;
+      }
+      const locked = now < unlockTs;
+      this.decodedLetter = {
+        code: raw,
+        title,
+        planetId,
+        content,
+        unlockTs,
+        unlockDateText: formatDate(new Date(unlockTs)),
+        locked,
+        garbled: garble(content),
+      };
+    },
+    resetDecode() {
+      this.decodedLetter = null;
+      this.decodeInput = '';
+    },
+    markInboxRead(item) {
+      if (item.read) return;
+      item.read = true;
+      const app = getApp();
+      const inbox = app.globalData.inboxItems || [];
+      const entry = inbox.find(i => i.id === item.id);
+      if (entry && !entry.read) {
+        entry.read = true;
+        app.globalData.saveState();
+      }
     },
     addCoord() {
       this.editingCoordId = null;
@@ -652,8 +1062,8 @@ export default {
       this.modalAsteroid = l.keyword ? '主题 · ' + l.keyword : '未标记主题';
       this.modalStar = '✉️';
       this.modalDate = (l.sentDate || '') + ' 寄出';
-      this.isModalLit = false;
-      this.modalLikeNum = '';
+      this.isModalLit = !!(l.litUsers && l.litUsers.some(u => u.planetId === this.userId));
+      this.modalLikeNum = formatLikeCount(l.likes || 0);
       if (l._isDelivered) {
         this.modalContent = l.content;
         this.modalSignalText = '✓ 已送达';
@@ -665,28 +1075,81 @@ export default {
       }
       this.showModal = true;
     },
+    viewReceivedLetter(r) {
+      // 未到解密时间：震动并提示，无法查看内容
+      if (!r._unlocked) {
+        uni.vibrateShort({ fail: () => {} });
+        uni.showToast({ title: '信件正在穿越时空来寻找你', icon: 'none', duration: 2000 });
+        return;
+      }
+      // 已解密：查看信件内容
+      this.currentModalLetter = r;
+      this.modalIsMine = true;
+      this.modalLocked = false;
+      this.modalAvatar = r.avatar || '🪐';
+      this.modalFrom = '来自 ' + r.planetId;
+      this.modalAsteroid = r._unlockText;
+      this.modalStar = '💌';
+      this.modalDate = (r.sentTimestamp ? formatDate(new Date(r.sentTimestamp)) : '') + ' 寄出';
+      this.modalContent = r.content;
+      this.modalSignalText = '✓ 已解密';
+      this.modalSignalClass = 'delivered';
+      this.isModalLit = false;
+      this.modalLikeNum = '';
+      this.showModal = true;
+    },
     closeModal() { this.showModal = false; },
     toggleLight() {
       if (!this.currentModalLetter) return;
       const app = getApp();
-      if (!app.globalData.likedLetterIds) app.globalData.likedLetterIds = new Set();
-      const likedSet = app.globalData.likedLetterIds;
-      const id = this.currentModalLetter.id;
-      if (!likedSet.has(id)) {
-        likedSet.add(id);
-        this.currentModalLetter.likes++;
-        this.isModalLit = true;
-        this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
-        app.globalData.saveState();
-        uni.showToast({ title: '已点亮 ⭐', icon: 'none', duration: 1500 });
+      const letter = this.currentModalLetter;
+      if (this.modalIsMine) {
+        if (!letter.litUsers) letter.litUsers = [];
+        const idx = letter.litUsers.findIndex(u => u.planetId === this.userId);
+        if (idx === -1) {
+          letter.litUsers.push({ avatar: '🌍', planetId: this.userId, time: formatDate(new Date()) });
+          letter.likes = (letter.likes || 0) + 1;
+          this.isModalLit = true;
+          this.modalLikeNum = formatLikeCount(letter.likes);
+          uni.showToast({ title: '已点亮 ⭐', icon: 'none', duration: 1500 });
+        } else {
+          letter.litUsers.splice(idx, 1);
+          letter.likes = Math.max(0, (letter.likes || 0) - 1);
+          this.isModalLit = false;
+          this.modalLikeNum = formatLikeCount(letter.likes);
+          uni.showToast({ title: '已取消点亮', icon: 'none', duration: 1500 });
+        }
+        const src = (app.globalData.mySentLetters || []).find(x => x.id === letter.id);
+        if (src) { src.litUsers = letter.litUsers; src.likes = letter.likes; }
       } else {
-        likedSet.delete(id);
-        this.currentModalLetter.likes = Math.max(0, this.currentModalLetter.likes - 1);
-        this.isModalLit = false;
-        this.modalLikeNum = formatLikeCount(this.currentModalLetter.likes);
-        app.globalData.saveState();
+        if (!app.globalData.likedLetterIds) app.globalData.likedLetterIds = new Set();
+        const likedSet = app.globalData.likedLetterIds;
+        const id = letter.id;
+        if (!likedSet.has(id)) {
+          likedSet.add(id);
+          letter.likes++;
+          this.isModalLit = true;
+          this.modalLikeNum = formatLikeCount(letter.likes);
+          uni.showToast({ title: '已点亮 ⭐', icon: 'none', duration: 1500 });
+        } else {
+          likedSet.delete(id);
+          letter.likes = Math.max(0, letter.likes - 1);
+          this.isModalLit = false;
+          this.modalLikeNum = formatLikeCount(letter.likes);
+          uni.showToast({ title: '已取消点亮', icon: 'none', duration: 1500 });
+        }
       }
+      app.globalData.saveState();
       this.renderPage();
+    },
+    openLitList() {
+      this.litList = (this.currentModalLetter && this.currentModalLetter.litUsers)
+        ? this.currentModalLetter.litUsers.slice()
+        : [];
+      this.showLitList = true;
+    },
+    closeLitList() {
+      this.showLitList = false;
     },
   },
 };
@@ -809,17 +1272,6 @@ export default {
 .earth-name { font-size:20px; font-weight:700; }
 .earth-name .grad { background:linear-gradient(135deg,var(--cyan),var(--gold)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
 .earth-id { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:4px; }
-
-/* Stats row */
-.earth-stats { display:flex; gap:12px; margin-top:20px; }
-.earth-stat {
-  flex:1; text-align:center; padding:16px 8px;
-  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
-}
-.earth-stat-num { font-size:24px; font-weight:800; line-height:1; }
-.earth-stat-num.grad { background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-.earth-stat-num.grad-gold { background:linear-gradient(135deg,var(--gold),var(--pink)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-.earth-stat-label { font-size:11px; color:var(--text-2); margin-top:6px; }
 
 /* Sub-tab switcher */
 .earth-subtabs {
@@ -991,6 +1443,57 @@ export default {
 .liked-preview { font-size:12px; color:var(--text-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .liked-likes { display:flex; align-items:center; gap:3px; font-size:12px; color:var(--pink); font-weight:600; flex-shrink:0; }
 
+/* Received list (寄给我的) */
+.received-list { display:flex; flex-direction:column; gap:12px; }
+.received-card {
+  display:flex; align-items:center; gap:12px; padding:16px;
+  background:var(--glass); border:1px solid rgba(255,255,255,.17); border-radius:14px;
+  cursor:pointer; transition:all .3s;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.received-card:active { transform:scale(.97); }
+.received-card.locked {
+  background:rgba(168,85,247,.05);
+  border-color:rgba(168,85,247,.18);
+}
+.received-avatar {
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  border:1px solid rgba(0,229,255,.2);
+}
+.received-avatar.locked {
+  filter:grayscale(.4) brightness(.9);
+  border-color:rgba(168,85,247,.25);
+}
+.received-info { flex:1; min-width:0; }
+.received-from { font-size:13px; font-weight:700; color:var(--cyan); font-family:'SF Mono',monospace; letter-spacing:.5px; }
+.received-preview { font-size:12px; color:var(--text-2); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.received-keyword {
+  display:inline-flex; align-items:center; gap:5px; margin-top:5px;
+  padding:3px 10px; border-radius:100px;
+  background:rgba(168,85,247,.08); border:1px solid rgba(168,85,247,.25);
+  color:var(--purple); font-size:11px; font-weight:600;
+}
+.received-keyword-icon { font-size:10px; }
+.received-keyword-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.received-locked-preview { display:flex; align-items:center; gap:6px; margin-top:5px; }
+.received-lock { font-size:13px; flex-shrink:0; }
+.received-lock-text { display:inline-flex; align-items:center; gap:3px; }
+.received-block {
+  display:inline-block; width:14px; height:6px; border-radius:2px;
+  background:var(--text-3); opacity:.35;
+}
+.received-unlock-row { display:flex; align-items:center; gap:4px; margin-top:6px; }
+.received-unlock-icon { font-size:11px; }
+.received-unlock-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.received-status {
+  font-size:11px; font-weight:600; padding:4px 10px; border-radius:100px;
+  white-space:nowrap; flex-shrink:0;
+}
+.received-status.unlocked { background:rgba(255,213,107,.1); color:var(--gold); border:1px solid rgba(255,213,107,.2); }
+.received-status.sealed { background:rgba(168,85,247,.1); color:var(--purple); border:1px solid rgba(168,85,247,.2); }
+
 /* Coordinate Cards */
 .coord-intro {
   font-size:12px; color:var(--text-2); line-height:1.7; margin-bottom:16px;
@@ -1132,7 +1635,7 @@ export default {
   display:flex; align-items:center; gap:10px; margin-top:18px;
   padding:12px 16px; background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
 }
-.modal-like-count { flex:1; }
+.modal-like-count { flex:1; cursor:pointer; }
 .modal-like-num { font-size:18px; font-weight:700; }
 .modal-like-num.lit { color:var(--pink); }
 .modal-like-label { font-size:11px; color:var(--text-3); margin-top:2px; }
@@ -1151,4 +1654,230 @@ export default {
 .modal-btn:active { transform:scale(.95); }
 
 @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* Listened-by (被收听) entry under 我的 */
+.earth-stats { display:flex; gap:12px; }
+.earth-listened {
+  flex:1; display:flex; align-items:center; gap:8px; margin-bottom:0; cursor:pointer;
+  padding:12px 16px; border-radius:14px;
+  background:var(--glass); border:1px solid var(--glass-bd);
+  transition:all .25s;
+}
+.earth-listened-hover { transform:scale(.98); border-color:rgba(168,85,247,.3); background:rgba(168,85,247,.06); }
+.earth-listened-icon { font-size:18px; }
+.earth-listened-num { font-size:18px; font-weight:800; background:linear-gradient(135deg,var(--purple),var(--cyan)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.earth-listened-label { font-size:13px; color:var(--text-2); }
+
+/* Asteroid / Listeners Popup (shared) */
+.atlas-modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box;
+  background:rgba(5,5,20,.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; transition:opacity .3s;
+}
+.atlas-modal-overlay.show { opacity:1; }
+.atlas-modal {
+  width:100%; max-width:420px; box-sizing:border-box;
+  max-height:78vh; display:flex; flex-direction:column;
+  background:linear-gradient(135deg,rgba(12,12,36,.98),rgba(20,20,50,.98));
+  border:1px solid rgba(0,229,255,.2); border-radius:24px;
+  box-shadow:0 0 60px rgba(0,229,255,.18);
+  transform:scale(.92); opacity:0; transition:transform .3s cubic-bezier(.22,1,.36,1), opacity .3s;
+}
+.atlas-modal-overlay.show .atlas-modal { transform:scale(1); opacity:1; }
+
+.inbox-modal-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 20px 14px; border-bottom:1px solid var(--glass-bd);
+}
+.inbox-modal-title { font-size:18px; font-weight:700; }
+.inbox-modal-close {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass); border:1px solid var(--glass-bd);
+  color:var(--text-2); font-size:14px; cursor:pointer; transition:all .25s;
+}
+.inbox-modal-close:active { transform:scale(.92); background:rgba(255,107,157,.08); }
+.inbox-scroll { flex:1; overflow-y:auto; padding:14px 16px calc(14px + env(safe-area-inset-bottom)); }
+.inbox-scroll .atlas-card:last-child { margin-bottom:0; }
+
+.listen-empty { text-align:center; padding:36px 20px; color:var(--text-3); }
+.listen-empty-icon { font-size:36px; margin-bottom:10px; opacity:.4; }
+.listen-empty-text { font-size:13px; line-height:1.7; }
+
+.atlas-card {
+  display:flex; align-items:flex-start; gap:12px; padding:14px 16px; margin-bottom:10px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.atlas-card:last-child { margin-bottom:0; }
+.atlas-avatar {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  border:1px solid rgba(0,229,255,.15);
+}
+.atlas-info { flex:1; min-width:0; }
+.atlas-name { font-size:13px; font-weight:600; color:var(--text-1); }
+.atlas-planet { font-size:10px; color:var(--text-3); font-family:'SF Mono',monospace; letter-spacing:.5px; margin-top:3px; }
+.atlas-text { font-size:13px; line-height:1.7; color:var(--text-2); margin-top:6px; }
+.atlas-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; margin-top:8px; }
+
+/* ===== 顶部操作：信号箱 + 解码 (top-right) ===== */
+.earth-top-actions {
+  position:absolute; top:52px; right:20px; z-index:50;
+  display:flex; align-items:center; gap:10px;
+}
+.earth-inbox-trigger {
+  position:relative;
+  width:40px; height:40px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:50%;
+  font-size:18px; cursor:pointer; transition:all .25s;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.earth-decode-trigger {
+  width:40px; height:40px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:50%;
+  font-size:18px; cursor:pointer; transition:all .25s;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.inbox-trigger-hover { transform:scale(.94); background:rgba(0,229,255,.08); border-color:rgba(0,229,255,.3); }
+.inbox-trigger-icon { line-height:1; }
+.inbox-trigger-badge {
+  position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px;
+  border-radius:100px; background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff; font-size:10px; font-weight:700; line-height:18px; text-align:center;
+  box-shadow:0 2px 8px rgba(255,107,157,.4);
+}
+
+/* ===== 信号箱 Popup (centered) ===== */
+.inbox-modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box;
+  background:rgba(5,5,20,.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; transition:opacity .3s;
+}
+.inbox-modal-overlay.show { opacity:1; }
+.inbox-modal {
+  width:100%; max-width:420px; box-sizing:border-box;
+  max-height:78vh; display:flex; flex-direction:column;
+  background:linear-gradient(135deg,rgba(12,12,36,.98),rgba(20,20,50,.98));
+  border:1px solid rgba(0,229,255,.2);
+  border-radius:24px;
+  box-shadow:0 0 60px rgba(0,229,255,.18);
+  transform:scale(.92); opacity:0; transition:transform .3s cubic-bezier(.22,1,.36,1), opacity .3s;
+}
+.inbox-modal-overlay.show .inbox-modal { transform:scale(1); opacity:1; }
+
+/* ===== 解码 Popup ===== */
+.decode-modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box;
+  background:rgba(5,5,20,.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; transition:opacity .3s;
+}
+.decode-modal-overlay.show { opacity:1; }
+.decode-modal {
+  width:100%; max-width:420px; max-height:82vh; display:flex; flex-direction:column;
+  background:linear-gradient(135deg,rgba(12,12,36,.98),rgba(20,20,50,.98));
+  border:1px solid rgba(168,85,247,.25); border-radius:24px;
+  box-shadow:0 0 60px rgba(168,85,247,.2);
+  transform:scale(.92); opacity:0; transition:transform .3s cubic-bezier(.22,1,.36,1), opacity .3s;
+}
+.decode-modal-overlay.show .decode-modal { transform:scale(1); opacity:1; }
+.decode-body { padding:18px 20px 22px; }
+.decode-hint { font-size:13px; color:var(--text-2); line-height:1.7; margin-bottom:14px; }
+.decode-input {
+  width:100%; min-height:88px; padding:14px; box-sizing:border-box;
+  background:rgba(255,255,255,.04); border:1px solid var(--glass-bd); border-radius:14px;
+  color:var(--text-1); font-size:14px; line-height:1.6;
+}
+.decode-tools { display:flex; justify-content:flex-end; margin-top:8px; }
+.decode-paste {
+  font-size:12px; color:var(--cyan); padding:6px 12px; border-radius:100px;
+  background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.2);
+}
+.decode-btn {
+  width:100%; margin-top:14px; padding:13px 0; border:none; border-radius:14px;
+  background:linear-gradient(135deg,var(--purple),var(--cyan)); color:#fff;
+  font-size:15px; font-weight:700; cursor:pointer;
+}
+.decode-btn:active { transform:scale(.98); }
+.decode-btn-ghost {
+  background:transparent; border:1px solid var(--glass-bd); color:var(--text-2); font-weight:600;
+}
+.decode-result-head {
+  padding:16px 20px; border-bottom:1px solid var(--glass-bd);
+  display:flex; flex-direction:column; gap:6px;
+}
+.decode-result-title { font-size:17px; font-weight:700; }
+.decode-result-planet {
+  font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; letter-spacing:.5px;
+}
+.decode-locked { padding:22px 20px; text-align:center; }
+.decode-locked-icon { font-size:34px; margin-bottom:10px; opacity:.5; }
+.decode-locked-text { font-size:14px; color:var(--text-2); }
+.decode-locked-date { font-size:12px; color:var(--text-3); margin-top:6px; font-family:'SF Mono',monospace; }
+.decode-garble {
+  margin-top:16px; text-align:left; font-size:14px; line-height:2; color:var(--text-3);
+  word-break:break-all; letter-spacing:1px;
+  background:rgba(255,255,255,.03); border:1px solid var(--glass-bd); border-radius:12px; padding:12px 14px;
+}
+.decode-content { padding:18px 20px; }
+.decode-content-text { font-size:14px; line-height:1.85; color:var(--text-1); white-space:pre-wrap; }
+
+/* 信号箱 cards */
+.inbox-card {
+  display:flex; align-items:center; gap:12px; padding:14px 16px; margin-bottom:10px;
+  background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
+  cursor:pointer; transition:all .3s;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.inbox-card:last-child { margin-bottom:0; }
+.inbox-card.unread {
+  border-color:rgba(0,229,255,.3);
+  background:rgba(0,229,255,.06);
+  box-shadow:0 2px 16px rgba(0,229,255,.12);
+}
+.inbox-card:active { transform:scale(.97); }
+.inbox-avatar {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  border:1px solid rgba(0,229,255,.15);
+}
+.inbox-info { flex:1; min-width:0; }
+.inbox-from { font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.inbox-from-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-action-text { font-size:11px; color:var(--cyan); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-action-text.action-lit { color:#ff7eb3; font-weight:600; }
+.inbox-new-badge {
+  font-size:9px; font-weight:800; letter-spacing:.5px; flex-shrink:0;
+  padding:1px 6px; border-radius:100px;
+  background:linear-gradient(135deg,var(--pink),var(--purple)); color:#fff;
+  box-shadow:0 1px 6px rgba(255,107,157,.4);
+}
+.inbox-preview { font-size:12px; color:var(--text-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-meta { display:flex; align-items:center; gap:8px; margin-top:4px; }
+.inbox-time { font-size:11px; color:var(--text-3); font-family:'SF Mono',monospace; }
+.inbox-type-tag {
+  font-size:10px; padding:2px 8px; border-radius:100px;
+  border:1px solid var(--glass-bd); background:var(--glass);
+}
+.inbox-type-tag.tag-listen { color:var(--cyan); border-color:rgba(0,229,255,.2); background:rgba(0,229,255,.06); }
+.inbox-type-tag.tag-lit { color:#ff7eb3; border-color:rgba(255,126,179,.3); background:rgba(255,126,179,.08); }
+.inbox-type-tag.tag-letter { color:var(--gold); border-color:rgba(255,213,107,.2); background:rgba(255,213,107,.06); }
+/* 已读：动作文案与类型标签统一置灰，颜色与「我寄出的」信件内容一致（--text-2） */
+.inbox-card.read .inbox-action-text,
+.inbox-card.read .inbox-action-text.action-lit { color:var(--text-2); font-weight:400; }
+.inbox-card.read .inbox-type-tag,
+.inbox-card.read .inbox-type-tag.tag-listen,
+.inbox-card.read .inbox-type-tag.tag-lit,
+.inbox-card.read .inbox-type-tag.tag-letter {
+  color:var(--text-2); border-color:var(--glass-bd); background:var(--glass);
+}
+.inbox-action { flex-shrink:0; }
+.inbox-arrow { font-size:18px; color:var(--text-3); font-weight:700; }
 </style>

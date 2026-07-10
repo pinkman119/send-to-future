@@ -21,7 +21,7 @@ export default {
       selected: 0,
       list: [
         { pagePath: 'pages/launch/launch', text: '发射' },
-        { pagePath: 'pages/wander/wander', text: '漫游' },
+        { pagePath: 'pages/wander/wander', text: '星系' },
         { pagePath: 'pages/listen/listen', text: '信号' },
         { pagePath: 'pages/earth/earth', text: '地球' }
       ]
@@ -102,7 +102,7 @@ export default {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2.5c3 2 4.6 5.2 4.6 8.8 0 1.6-.5 3.1-1.1 4.6L12 21l-3.5-5.1c-.6-1.5-1.1-3-1.1-4.6C7.4 7.7 9 4.5 12 2.5z'/><circle cx='12' cy='9.6' r='1.7'/><path d='M7.6 12.6C5 13.1 3.6 15 3.6 15s2.6.6 4.2-1.5'/><path d='M16.4 12.6C19 13.1 20.4 15 20.4 15s-2.6.6-4.2-1.5'/><path d='M12 19v1.8'/></svg>");
 }
 
-/* 漫游 - 指南针 */
+/* 星系 - 指南针 */
 .ico-1 {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a5a7a' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9.2'/><polygon points='16.2 7.8 14 14 7.8 16.2 10 10 16.2 7.8'/></svg>");
 }

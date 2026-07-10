@@ -583,6 +583,8 @@ export default {
           avatar: letter.avatar || '🌙',
           asteroid: letter.asteroid,
           time: formatDate(new Date()),
+          pushedAt: Date.now(),
+          viewed: false,
         });
         this.isModalSubscribed = true;
         this.syncListened();
@@ -596,6 +598,7 @@ export default {
           type: 'newListener',
           from: letter.from,
           avatar: letter.avatar || '🌙',
+          planetId: 'EARTH-' + String(Math.floor(Math.random() * 100000)).padStart(5, '0'),
           preview: letter.content.replace(/\n/g, ' ').substring(0, 50) + '...',
           time: formatDate(new Date()),
           read: false,

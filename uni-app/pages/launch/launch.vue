@@ -340,9 +340,9 @@ export default {
     toggleVisibility() {
       this.isEncrypted = !this.isEncrypted;
       if (this.isEncrypted) {
-        this.showToast('🔒 加密信件不会出现在「漫游」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
+        this.showToast('🔒 加密信件不会出现在「星系」星海\n将使用加密算法保护内容\n直到送达之日才会推送给您');
       } else {
-        this.showToast('🌐 信件已设为公开，将出现在「漫游」星海');
+        this.showToast('🌐 信件已设为公开，将出现在「星系」星海');
       }
     },
     showToast(msg) {

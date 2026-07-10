@@ -2,7 +2,7 @@
   <view class="wander-page">
     <view class="wander-header">
       <view class="wander-title-row">
-        <view class="wander-title"><text class="grad">漫游</text>星海</view>
+        <view class="wander-title"><text class="grad">星系</text>星海</view>
         <view class="wander-refresh" :class="{ spinning: isRefreshing }" @click="refreshStars">
           <text class="wander-refresh-icon">↻</text>
           <text>刷新星图</text>
