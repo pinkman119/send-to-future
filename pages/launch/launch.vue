@@ -127,11 +127,11 @@
     <view class="section" v-if="!current.launchOnlyMode">
       <view class="section-label">TIMING</view>
       <view class="section-title">设定送达时间</view>
-      <view class="section-desc">选择未来的某一天，信件将在那天送达</view>
+      <view class="section-desc">选择 1年 / 3年 / 10年后，或自定义一个送达日期</view>
       <view class="time-grid">
         <view
           class="time-card"
-          v-for="year in [1, 3, 5, 10]"
+          v-for="year in presetYears"
           :key="year"
           :class="{ selected: current.selectedYears === year }"
           @click="selectYears(year)"
@@ -140,12 +140,49 @@
           <view class="time-unit">年后</view>
           <view class="time-date">{{ getFutureDate(year) }}</view>
         </view>
+        <!-- 自定义 -->
+        <view
+          v-if="!current.selectedChannel"
+          class="time-card"
+          @click="showToast('请先选择送达方式哦 ~')"
+        >
+          <view class="time-num grad" style="font-size:17px;">自定义</view>
+          <view class="time-unit">送达</view>
+          <view class="time-date">需先选渠道</view>
+        </view>
+        <picker
+          v-else
+          mode="date"
+          :start="customMinDate"
+          :end="customMaxDate"
+          :value="customPickerValue"
+          @change="onCustomDateChange"
+        >
+          <view class="time-card" :class="{ selected: !!current.customDate }">
+            <view class="time-num grad" style="font-size:17px;">自定义</view>
+            <view class="time-unit">送达</view>
+            <view class="time-date">{{ current.customDate || customDateHint }}</view>
+          </view>
+        </picker>
       </view>
     </view>
 
     <view class="launch-btn-wrap">
-      <button class="launch-btn" @click="handleLaunch">{{ current.launchOnlyMode ? '✨ 仅发射到星海' : '🚀 发射至星际' }}</button>
-      <view class="launch-hint">{{ current.launchOnlyMode ? '信件将化作星光，永远闪耀于星海，不会推送' : '信件将加密存储，在指定日期自动送达' }}</view>
+      <button
+        class="launch-btn"
+        :class="{ igniting }"
+        :style="igniteStyle"
+        @touchstart.prevent="startIgnite"
+        @touchend="endPress"
+        @touchcancel="cancelIgnite"
+        @mousedown.prevent="startIgnite"
+        @mouseup="endPress"
+        @mouseleave="cancelIgnite"
+      >{{ launchBtnText }}</button>
+      <view class="launch-ignite-bar" v-if="igniting">
+        <view class="launch-ignite-fill" :style="{ width: (igniteProgress * 100).toFixed(0) + '%' }"></view>
+      </view>
+      <view class="launch-hint">{{ current.launchOnlyMode ? '信件将化作星光，永远闪耀于星海，不会推送' : '长按点火，蓄力越久发射到更远的星系' }}</view>
     </view>
 
     <!-- Launch Animation Overlay -->
@@ -286,6 +323,7 @@ export default {
         keyword: '',
         selectedChannel: '',
         selectedYears: null,
+        customDate: null,
         isEncrypted: false,
         launchOnlyMode: false,
       },
@@ -294,6 +332,7 @@ export default {
         keyword: '',
         selectedChannel: '',
         selectedYears: null,
+        customDate: null,
         isEncrypted: false,
         from: '',
         to: '',
@@ -321,11 +360,43 @@ export default {
       pendingChannel: '',
       _swipeStartX: 0,
       _swipeStartY: 0,
+      igniting: false,
+      igniteStyle: '',
+      igniteProgress: 0,
     };
   },
   computed: {
     current() {
       return this.mode === 'self' ? this.self : this.someone;
+    },
+    presetYears() {
+      return [1, 3, 10];
+    },
+    // 自定义日期最早可选范围：根据所选送达渠道而定
+    customMinDate() {
+      const ch = this.current.selectedChannel;
+      let addDays = 1;
+      if (ch === 'mail' || ch === 'unbreakable') addDays = 30;
+      else if (ch === 'sms') addDays = 7;
+      else if (ch === 'qqmail') addDays = 1;
+      else addDays = 1; // 默认（理论上需先选渠道）
+      const d = new Date();
+      d.setDate(d.getDate() + addDays);
+      return this.formatDateISO(d);
+    },
+    customMaxDate() {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 100);
+      return this.formatDateISO(d);
+    },
+    customPickerValue() {
+      if (this.current.customDate) {
+        return this.formatDateISO(this.parseDotDate(this.current.customDate));
+      }
+      return this.customMinDate;
+    },
+    customDateHint() {
+      return this.customMinDate.replace(/-/g, '.');
     },
     isUnbreakableChannel() {
       return this.coordChannel === 'unbreakable';
@@ -342,6 +413,10 @@ export default {
         const meta = coordTypeMap[c.type] || coordTypeMap.phone;
         return { ...c, icon: meta.icon };
       });
+    },
+    launchBtnText() {
+      if (this.igniting) return '🔥 点火中…';
+      return this.current.launchOnlyMode ? '✨ 仅发射到星海' : '🚀 发射至星际';
     },
   },
   mounted() {
@@ -360,6 +435,19 @@ export default {
       d.setFullYear(d.getFullYear() + years);
       return this.formatDate(d);
     },
+    formatDateISO(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    formatDateFromISO(s) {
+      return s.replace(/-/g, '.');
+    },
+    parseDotDate(s) {
+      const [y, m, d] = s.split('.').map(Number);
+      return new Date(y, m - 1, d);
+    },
     getDateDiff(futureDate) {
       const now = new Date();
       const diff = futureDate - now;
@@ -374,9 +462,15 @@ export default {
     },
     selectChannel(channel) {
       this.current.selectedChannel = channel;
+      this.current.customDate = null;
     },
     selectYears(years) {
       this.current.selectedYears = years;
+      this.current.customDate = null;
+    },
+    onCustomDateChange(e) {
+      this.current.customDate = this.formatDateFromISO(e.detail.value);
+      this.current.selectedYears = null;
     },
     toggleVisibility() {
       this.current.isEncrypted = !this.current.isEncrypted;
@@ -394,6 +488,95 @@ export default {
         this.toastOpacity = 0;
         setTimeout(() => { this.toastMsg = ''; }, 300);
       }, 3000);
+    },
+    startIgnite() {
+      if (this.igniting || this.showOverlay || this.showCoordPopup) return;
+      if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
+      if (!this.current.launchOnlyMode) {
+        if (!this.current.selectedChannel) { this.showToast('请选择送达方式'); return; }
+        if (!this.current.selectedYears && !this.current.customDate) { this.showToast('请选择送达时间'); return; }
+      }
+      this.igniting = true;
+      this.igniteProgress = 0;
+      this._igniteT0 = this._now();
+      this._lastTs = 0;
+      this._phase = 0;
+      this._pressStart = Date.now();
+      this._igniteFull = 1000;
+      if (this._igniteTimer) clearTimeout(this._igniteTimer);
+      this._igniteTimer = setTimeout(() => this.fireLaunch(), this._igniteFull);
+      this._scheduleFrame();
+    },
+    _scheduleFrame() {
+      if (!this._rafFn) {
+        const w = (typeof window !== 'undefined') ? window : {};
+        this._rafFn = w.requestAnimationFrame ? w.requestAnimationFrame.bind(w) : (cb) => setTimeout(() => cb(this._now()), 16);
+        this._cafFn = w.cancelAnimationFrame ? w.cancelAnimationFrame.bind(w) : clearTimeout;
+      }
+      this._igniteRAF = this._rafFn(this.igniteLoop);
+    },
+    _now() {
+      return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    },
+    _lerpColor(a, b, t) {
+      const r = Math.round(a[0] + (b[0] - a[0]) * t);
+      const g = Math.round(a[1] + (b[1] - a[1]) * t);
+      const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+      return `rgb(${r},${g},${bl})`;
+    },
+    igniteLoop(ts) {
+      if (!this.igniting) return;
+      if (!this._lastTs) this._lastTs = ts;
+      const dt = ts - this._lastTs;
+      this._lastTs = ts;
+      const t = ts - this._igniteT0;
+      const p = Math.min(Math.max(t, 0), this._igniteFull) / this._igniteFull;
+      const freq = 8 + 32 * p; // Hz，随蓄力不断提升
+      this._phase += (freq * dt / 1000) * 2 * Math.PI;
+      const ampX = 2 + 9 * p;
+      const ampY = 1 + 3 * p;
+      const rot = (0.8 + 3 * p) * Math.sin(this._phase * 0.8);
+      const x = ampX * Math.sin(this._phase);
+      const y = ampY * Math.cos(this._phase * 1.2);
+      // 颜色随蓄力从蓝紫逐渐变红，最终与「发射中」进度条最终色一致（#ff5e3a → #ff2d00）
+      const c1 = this._lerpColor([0, 229, 255], [255, 94, 58], p);   // → #ff5e3a
+      const c2 = this._lerpColor([168, 85, 247], [255, 45, 0], p);   // → #ff2d00
+      const glow = (0.15 + 0.6 * p).toFixed(2);
+      this.igniteStyle =
+        `transform:translate(${x.toFixed(2)}px,${y.toFixed(2)}px) rotate(${rot.toFixed(2)}deg) scale(${(0.98 - 0.02 * p).toFixed(3)});` +
+        `background:linear-gradient(135deg,${c1},${c2});` +
+        `box-shadow:0 0 ${(60 * p).toFixed(0)}px rgba(255,90,0,${glow}),0 0 ${(120 * p).toFixed(0)}px rgba(255,45,0,${(glow * 0.5).toFixed(2)});`;
+      this.igniteProgress = p;
+      if (this.igniting) this._scheduleFrame();
+    },
+    endPress() {
+      if (!this.igniting) return;
+      const held = Date.now() - this._pressStart;
+      if (held < 200) {
+        // 极短轻点：直接发射，不走蓄力
+        this.clearIgnite();
+        this.handleLaunch();
+      }
+      // 其余情况：持续蓄力至满，由 fireLaunch 触发
+    },
+    fireLaunch() {
+      if (!this.igniting) return;
+      this.clearIgnite();
+      this.handleLaunch();
+    },
+    cancelIgnite() {
+      if (!this.igniting) return;
+      this.clearIgnite();
+      this.showToast('点火中断，松手太快啦');
+    },
+    clearIgnite() {
+      this.igniting = false;
+      this.igniteProgress = 0;
+      this.igniteStyle = '';
+      if (this._igniteRAF && this._cafFn) this._cafFn(this._igniteRAF);
+      this._igniteRAF = null;
+      if (this._igniteTimer) clearTimeout(this._igniteTimer);
+      this._igniteTimer = null;
     },
     handleLaunch() {
       if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
@@ -471,12 +654,21 @@ export default {
       const mode = this.mode;
       const content = this.current.letterContent.trim();
       const channel = isLaunchOnly ? 'launch' : this.current.selectedChannel;
-      const years = isLaunchOnly ? null : this.current.selectedYears;
+      const isCustom = !isLaunchOnly && !!this.current.customDate;
+      const years = isLaunchOnly ? null : (isCustom ? null : this.current.selectedYears);
       const keyword = this.current.keyword.trim() || '未标记主题';
 
-      const deliveryDate = isLaunchOnly ? '' : this.getFutureDate(years);
-      const deliveryDateObj = new Date();
-      deliveryDateObj.setFullYear(deliveryDateObj.getFullYear() + (years || 0));
+      let deliveryDate = '';
+      let deliveryDateObj = new Date();
+      if (!isLaunchOnly) {
+        if (isCustom) {
+          deliveryDate = this.current.customDate;
+          deliveryDateObj = this.parseDotDate(deliveryDate);
+        } else {
+          deliveryDate = this.getFutureDate(years);
+          deliveryDateObj.setFullYear(deliveryDateObj.getFullYear() + years);
+        }
+      }
       const duration = isLaunchOnly ? '' : this.getDateDiff(deliveryDateObj);
 
       const sentLetter = {
@@ -492,6 +684,7 @@ export default {
         deliveryDate,
         deliveryTimestamp: isLaunchOnly ? 0 : deliveryDateObj.getTime(),
         years,
+        customDate: isCustom ? deliveryDate : null,
       };
 
       const app = getApp();
@@ -541,6 +734,7 @@ export default {
       this.current.keyword = '';
       this.current.selectedChannel = '';
       this.current.selectedYears = null;
+      this.current.customDate = null;
       this.current.isEncrypted = false;
       if (this.current.launchOnlyMode !== undefined) this.current.launchOnlyMode = false;
       this.current.from = '';
@@ -911,6 +1105,16 @@ export default {
 }
 .launch-btn::after { border:none; }
 .launch-btn:active { transform:scale(.97); }
+.launch-ignite-bar {
+  width:100%; max-width:320px; height:5px; margin:12px auto 0; border-radius:100px;
+  background:rgba(255,255,255,.08); overflow:hidden;
+}
+.launch-ignite-fill {
+  height:100%; width:0; border-radius:100px;
+  background:linear-gradient(90deg,#ffb347,#ff5e3a,#ff2d00);
+  box-shadow:0 0 12px rgba(255,90,0,.7);
+  transition:width .05s linear;
+}
 .launch-hint { font-size:12px; color:var(--text-3); margin-top:12px; }
 
 /* Launch Animation Overlay */

@@ -7,7 +7,9 @@
       :class="{ active: selected === index }"
       @click="switchTab(item, index)"
     >
-      <view class="tab-icon" :class="'ico-' + index"></view>
+      <view class="tab-icon" :class="tabIconClass(index)">
+        <image v-if="index === 3 && planetImg" class="tab-planet-img" :src="planetImg" mode="aspectFit" />
+      </view>
       <text class="tab-text">{{ item.text }}</text>
     </view>
   </view>
@@ -19,6 +21,7 @@ export default {
   data() {
     return {
       selected: 0,
+      planetImg: '',
       list: [
         { pagePath: 'pages/launch/launch', text: '发射' },
         { pagePath: 'pages/wander/wander', text: '星系' },
@@ -29,9 +32,12 @@ export default {
   },
   created() {
     this.syncSelected()
+    this.syncPlanetImg()
+    uni.$on('planet-change', (url) => { this.planetImg = url })
   },
   onShow() {
     this.syncSelected()
+    this.syncPlanetImg()
   },
   methods: {
     syncSelected() {
@@ -45,6 +51,14 @@ export default {
       if (this.selected === index) return
       this.selected = index
       uni.switchTab({ url: '/' + item.pagePath })
+    },
+    syncPlanetImg() {
+      const app = getApp()
+      if (app.globalData && app.globalData.myPlanetImg) this.planetImg = app.globalData.myPlanetImg
+    },
+    tabIconClass(index) {
+      if (index === 3 && this.planetImg) return ''
+      return 'ico-' + index
     }
   }
 }
@@ -84,6 +98,14 @@ export default {
   background-repeat: no-repeat;
   background-position: center;
   transition: transform 0.2s ease;
+}
+.tab-planet-img {
+  width: 28px;
+  height: 28px;
+}
+.tab-item.active .tab-planet-img {
+  transform: translateY(-2px) scale(1.08);
+  filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.9));
 }
 .tab-item.active .tab-icon {
   transform: translateY(-2px) scale(1.08);
@@ -125,4 +147,5 @@ export default {
 .tab-item.active .ico-3 {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M3 12h18'/><path d='M12 3c2.9 2.5 4.5 5.7 4.5 9s-1.6 6.5-4.5 9c-2.9-2.5-4.5-5.7-4.5-9S9.1 5.5 12 3z'/><path d='M5 8h14'/><path d='M5 16h14'/></svg>");
 }
+
 </style>

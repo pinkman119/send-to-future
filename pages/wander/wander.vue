@@ -115,8 +115,6 @@
 </template>
 
 <script>
-const avatarPool = ['🧑‍🚀','👩‍🚀','🧑‍🎓','👩‍🎓','🧑‍💼','👩‍💼','🧑‍🎨','👩‍🎨','🧑‍✈️','👩‍✈️','🧑‍🔬','👩‍🔬','🧙‍♀️','🧙‍♂️','🦊','🐱','🐨','🦉','🦋','🌙','🌠','🌿','🌸','⛄'];
-
 const sampleLetters = [
   { id:'L01', content:"亲爱的未来的我：\n\n你还记得2024年那个冬天吗？那时候你刚失业，每天窝在出租屋里投简历。你对自己说，没关系，这只是人生的一个弯道。\n\n现在回头看，那个弯道是不是已经变成了风景线？\n\n我希望你已经找到了真正热爱的事。如果不是，也没关系，继续找。", star:'gold', from:'一位北漂旅人', avatar:'🧑‍🚀', likes:1247 },
   { id:'L02', content:"给十年后的自己：\n\n如果那时候你已经有了孩子，请记得告诉他：妈妈年轻时也是个很酷的人。\n\n我去过12个国家，在冰岛看过极光，在土耳其坐过热气球。我不是一开始就勇敢的，我只是选择了出发。\n\n希望你依然在路上。", star:'gold', from:'一位环球旅者', avatar:'👩‍✈️', likes:3856 },
@@ -210,7 +208,6 @@ function computeLines(positions) {
   const n = positions.length;
   const lines = [];
   if (n < 2) return lines;
-
   const inMST = new Array(n).fill(false);
   const minDist = new Array(n).fill(Infinity);
   const parent = new Array(n).fill(-1);
@@ -250,7 +247,6 @@ function computeLines(positions) {
   for (let i = 0; i < Math.min(maxExtra, candidates.length); i++) {
     extraEdges.push([candidates[i].i, candidates[i].j]);
   }
-
   const allEdges = [...mstEdges, ...extraEdges];
   allEdges.forEach((edge, idx) => {
     const [i, j] = edge;

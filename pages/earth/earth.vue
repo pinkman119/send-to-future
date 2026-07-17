@@ -16,7 +16,9 @@
     <view class="earth-header">
       <view class="earth-avatar-wrap" hover-class="earth-avatar-hover" @click="openPlanetModal">
         <view class="earth-avatar-ring"></view>
-        <view class="earth-avatar">{{ planetEmoji }}</view>
+        <view class="earth-avatar" :class="{ 'is-earth': currentPlanetId === 'earth' }">
+          <image class="earth-avatar-img" :src="currentPlanetImg" mode="aspectFit" />
+        </view>
         <view class="satellite-orbit">
           <view
             v-for="n in satelliteCount"
@@ -66,7 +68,7 @@
             :class="{ active: currentPlanetId === p.id }"
             @click="selectPlanet(p.id)"
           >
-            <view class="planet-opt-emoji">{{ p.emoji }}</view>
+            <image class="planet-opt-img" :src="p.img" mode="aspectFit" />
             <view class="planet-opt-name">{{ p.name }}</view>
             <view class="planet-opt-desc">{{ p.desc }}</view>
           </view>
@@ -453,6 +455,13 @@
 </template>
 
 <script>
+import marsImg from '@/img/火星.png';
+import venusImg from '@/img/金星.png';
+import moonImg from '@/img/月球.png';
+import saturnImg from '@/img/土星.png';
+import uranusImg from '@/img/天王星.png';
+import neptuneImg from '@/img/海王星.png';
+import plutoImg from '@/img/冥王星.png';
 const channelNames = { mail: '手写信件', qqmail: 'QQ邮箱', sms: '短信推送', unbreakable: '牢不可破的誓言' };
 const coordTypes = [
   { type: 'phone',  icon: '📱', label: '手机号',   placeholder: '请输入手机号',     bg: 'rgba(255,213,107,.1)' },
@@ -507,6 +516,16 @@ function formatDate(d) {
 
 const planetLitAvatars = ['🪐','🌕','🌖','🌗','🌘','☄️','🌠','🌟','⭐','🌌','🛸','👾','🛰️','🌝','🌚'];
 const planetLitNames = ['MARS','LUNA','VENUS','JUPITER','SATURN','NEPTUNE','PLUTO','CERES','ORION','ANDROMEDA','POLARIS','VEGA','SIRIUS','ALTAIR'];
+
+const PLANET_IMAGES = {
+  mars: marsImg,
+  venus: venusImg,
+  moon: moonImg,
+  saturn: saturnImg,
+  uranus: uranusImg,
+  neptune: neptuneImg,
+  pluto: plutoImg,
+};
 function randPlanetId() {
   const n = planetLitNames[Math.floor(Math.random() * planetLitNames.length)];
   return n + '-' + String(Math.floor(Math.random() * 90000) + 10000);
@@ -570,11 +589,15 @@ export default {
       satDelays: ['0s', '-5s', '-12s', '-3s', '-9s'],
       satRadii: [50, 60, 70, 80, 90],
       planetOptions: [
-        { id: 'euaf', emoji: '🌍', name: '地球（欧洲/非洲）', desc: '显示欧非大陆' },
-        { id: 'amer', emoji: '🌎', name: '地球（美洲）', desc: '显示美洲大陆' },
-        { id: 'asau', emoji: '🌏', name: '地球（亚洲/澳洲）', desc: '显示亚澳大陆' },
+        { id: 'mars', name: '火星', img: PLANET_IMAGES.mars, desc: '红色行星' },
+        { id: 'venus', name: '金星', img: PLANET_IMAGES.venus, desc: '启明星' },
+        { id: 'moon', name: '月球', img: PLANET_IMAGES.moon, desc: '地球的卫星' },
+        { id: 'saturn', name: '土星', img: PLANET_IMAGES.saturn, desc: '带光环' },
+        { id: 'uranus', name: '天王星', img: PLANET_IMAGES.uranus, desc: '侧躺自转' },
+        { id: 'neptune', name: '海王星', img: PLANET_IMAGES.neptune, desc: '深蓝远星' },
+        { id: 'pluto', name: '冥王星', img: PLANET_IMAGES.pluto, desc: '矮行星' },
       ],
-      currentPlanetId: 'euaf',
+      currentPlanetId: 'mars',
       currentPaletteIndex: 0,
       showPlanetModal: false,
       activeSubtab: 'sent',
@@ -624,9 +647,9 @@ export default {
       return Math.min(5, Math.max(1, this.listenersCount));
     },
 
-    planetEmoji() {
+    currentPlanetImg() {
       const p = this.planetOptions.find(o => o.id === this.currentPlanetId);
-      return p ? p.emoji : '🌍';
+      return p ? p.img : PLANET_IMAGES.mars;
     },
     satPalettes() {
       const app = getApp();
@@ -670,6 +693,13 @@ export default {
       const app = getApp();
       app.globalData.myPlanet = id;
       app.globalData.saveState();
+      this.syncPlanetToTab();
+    },
+    syncPlanetToTab() {
+      const app = getApp();
+      const img = this.currentPlanetImg;
+      if (app.globalData) app.globalData.myPlanetImg = img;
+      uni.$emit('planet-change', img);
     },
     selectPalette(idx) {
       this.currentPaletteIndex = idx;
@@ -689,7 +719,14 @@ export default {
         app.globalData.saveState();
       }
       this.listenersCount = listeners;
-      this.currentPlanetId = app.globalData.myPlanet || 'euaf';
+      const savedPlanet = app.globalData.myPlanet;
+      if (this.planetOptions.some(p => p.id === savedPlanet)) {
+        this.currentPlanetId = savedPlanet;
+      } else {
+        this.currentPlanetId = this.planetOptions[0].id;
+        if (app.globalData) app.globalData.myPlanet = this.currentPlanetId;
+      }
+      this.syncPlanetToTab();
 
       // 信号箱 demo 数据（收听者 + 点亮者），仅首次初始化
       let inbox = app.globalData.inboxItems || [];
@@ -1164,11 +1201,13 @@ export default {
 }
 .earth-avatar {
   width:80px; height:80px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; font-size:40px;
-  background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.08));
+  display:flex; align-items:center; justify-content:center;
+  background:transparent;
   border:2px solid rgba(0,229,255,.2);
   box-shadow:0 0 30px rgba(0,229,255,.15);
 }
+.earth-avatar-img { width:67px; height:67px; display:block; }
+.earth-avatar.is-earth .earth-avatar-img { width:10px; height:10px; }
 .earth-avatar-ring {
   position:absolute; inset:-6px; border-radius:50%;
   border:1px solid rgba(0,229,255,.15);
@@ -1234,7 +1273,7 @@ export default {
 }
 .planet-modal-close:active { transform:scale(.92); background:rgba(255,107,157,.08); }
 .planet-modal-label { font-size:13px; color:var(--cyan); font-weight:600; margin:6px 0 12px; letter-spacing:1px; }
-.planet-grid { display:flex; gap:10px; }
+.planet-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .planet-opt {
   flex:1; text-align:center; padding:14px 8px; cursor:pointer;
   background:var(--glass); border:1px solid var(--glass-bd); border-radius:14px;
@@ -1245,7 +1284,7 @@ export default {
   background:rgba(0,229,255,.1);
   box-shadow:0 2px 14px rgba(0,229,255,.15);
 }
-.planet-opt-emoji { font-size:30px; line-height:1; }
+.planet-opt-img { width:46px; height:46px; margin:0 auto; display:block; }
 .planet-opt-name { font-size:11px; font-weight:600; margin-top:8px; color:var(--text-1); }
 .planet-opt-desc { font-size:10px; color:var(--text-3); margin-top:3px; }
 .planet-opt:active { transform:scale(.97); }

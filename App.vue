@@ -1,4 +1,5 @@
 <script>
+	import DEFAULT_PLANET_IMG from '@/img/火星.png';
 	export default {
 		globalData: {
 			// ===== 以下为静态演示数据（各状态至少一个），后续接入后端时由接口数据整体替换 =====
@@ -122,7 +123,7 @@
 				{ id: 'L03', time: Date.now() - 1 * 86400000 }
 			],
 			myListenersCount: 3,
-			myPlanet: 'euaf',
+			myPlanet: 'mars',
 			likedUnlockMap: {},
 			satPalette: 0,
 			satPalettes: [
@@ -138,6 +139,7 @@
 		},
 		onLaunch: function() {
 			console.log('App Launch');
+			this.globalData.myPlanetImg = DEFAULT_PLANET_IMG;
 			// 已移除本地存储读取：当前数据统一使用 globalData 中的静态默认值（仅存在于内存）。
 			// 后续接入后端时，在此处调用接口拉取用户动态数据并赋值给 globalData 即可。
 		},
