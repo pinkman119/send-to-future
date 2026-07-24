@@ -1,9 +1,12 @@
 <script>
+	import { silentLogin } from './utils/auth.js';
+
 	export default {
 		globalData: {
 			mySentLetters: [],
 			likedLetterIds: new Set(),
 			myCoords: [],
+			login: null,
 			saveState() {
 				try {
 					const app = getApp();
@@ -23,6 +26,11 @@
 				const coords = uni.getStorageSync('starletter_coords');
 				if (coords) this.globalData.myCoords = JSON.parse(coords);
 			} catch(e) {}
+
+			// 静默登录：进入小程序第一时间在后台完成，不阻塞首屏渲染
+			silentLogin().catch((e) => {
+				console.warn('静默登录失败（不影响正常使用）', e);
+			});
 		},
 		onShow: function() {
 			console.log('App Show');

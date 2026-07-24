@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { LangchainModule } from './langchain/langchain.module';
+import { WechatModule } from './wechat/wechat.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LangchainModule } from './langchain/langchain.module';
     }),
     PrismaModule,
     LangchainModule,
+    WechatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
