@@ -1,0 +1,195 @@
+// Prisma schema for send-to-future backend.
+// 依据 docs/database-design.md 的 13 张表建模。
+// 类型映射约定：BIGINT→BigInt, INT/TINYINT→Int(@db.SmallInt), 布尔标志→Boolean,
+// DATETIME→DateTime, DECIMAL(10,2)→Decimal, JSON→Json, VARCHAR→String。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id         BigInt      @id @default(autoincrement()) @db.BigInt()
+  planet_code     String      @unique @db.VarChar(32)
+  nickname        String?     @db.VarChar(64)
+  planet_type     Int?        @db.Integer()
+  palette_id      BigInt?     @db.BigInt()
+  listeners_count Int         @default(0) @db.Integer()
+  created_time    DateTime    @default(now()) @db.Timestamp()
+  updated_time    DateTime    @updatedAt @db.Timestamp()
+
+  palette             Palette?           @relation(fields: [palette_id], references: [palette_id])
+  letters             Letter[]          @relation("SenderLetters")
+  coords              UserCoord[]
+  subscriptionsAsMy   Subscription[]     @relation("MySubscriptions")
+  subscriptionsAsThat Subscription[]     @relation("ThatSubscriptions")
+  atlasItems          Atlas[]
+  lights              Light[]
+  decodedLetters      LetterDecode[]
+  messageBoxes        MessageBox[]
+
+  @@map("user")
+}
+
+model Letter {
+  letter_id     BigInt    @id @default(autoincrement()) @db.BigInt()
+  letter_no     String    @unique @db.VarChar(32)
+  sender_id     BigInt    @db.BigInt()
+  sender        User      @relation("SenderLetters", fields: [sender_id], references: [user_id])
+  mode          Int       @db.SmallInt()
+  content       String    @db.Text()
+  keyword       String?   @db.VarChar(20)
+  channel_code  Int       @db.SmallInt()
+  is_public     Boolean   @default(true)
+  sent_time     DateTime  @db.Timestamp()
+  deliver_time  DateTime? @db.Timestamp()
+  years_offset  Int?      @db.Integer()
+  status        Int       @default(0) @db.SmallInt()
+  create_time   DateTime  @default(now()) @db.Timestamp()
+  delete_time   DateTime? @db.Timestamp()
+  decode        String?   @db.VarChar(20)
+
+  subscriptionLetters SubscriptionLetter[]
+  lights              Light[]
+  decoded             LetterDecode[]
+  messageBoxes        MessageBox[]
+
+  @@map("letter")
+}
+
+model Channel {
+  channel_id    Int      @id @default(autoincrement())
+  receiver_name String   @db.VarChar(32)
+  coord_id      BigInt   @db.BigInt()
+  coord         UserCoord @relation(fields: [coord_id], references: [coord_id])
+  channel_code  String   @db.VarChar(32)
+  price         Decimal  @db.Decimal(10, 2)
+  arrive_date   DateTime @db.Timestamp()
+  create_time   DateTime @default(now()) @db.Timestamp()
+  update_time   DateTime @updatedAt @db.Timestamp()
+  delete_time   DateTime? @db.Timestamp()
+
+  @@map("channel")
+}
+
+model UserCoord {
+  coord_id    BigInt   @id @default(autoincrement()) @db.BigInt()
+  user_id     BigInt   @db.BigInt()
+  user        User     @relation(fields: [user_id], references: [user_id])
+  coord_type  String   @db.VarChar(16)
+  coord_value String   @db.VarChar(255)
+  create_time DateTime @default(now()) @db.Timestamp()
+  update_time DateTime @updatedAt @db.Timestamp()
+  delete_time DateTime? @db.Timestamp()
+
+  channels Channel[]
+
+  @@map("user_coord")
+}
+
+model Galaxy {
+  wander_id   Int      @id @default(autoincrement())
+  wander_name String   @db.VarChar(16)
+  wander_desc String   @db.VarChar(256)
+  start_count Int      @default(10) @db.Integer()
+  create_time DateTime @default(now()) @db.Timestamp()
+  update_time DateTime @updatedAt @db.Timestamp()
+  delete_time DateTime? @db.Timestamp()
+
+  @@map("galaxy")
+}
+
+model Subscription {
+  subscription_id Int      @id @default(autoincrement())
+  my_id           BigInt   @db.BigInt()
+  my              User     @relation("MySubscriptions", fields: [my_id], references: [user_id])
+  that_id         BigInt   @db.BigInt()
+  that            User     @relation("ThatSubscriptions", fields: [that_id], references: [user_id])
+  listen_date     DateTime @db.Timestamp()
+
+  letters SubscriptionLetter[]
+
+  @@map("subscription")
+}
+
+model SubscriptionLetter {
+  subscription_letter_id Int     @id @default(autoincrement())
+  subscription_id        Int
+  subscription           Subscription @relation(fields: [subscription_id], references: [subscription_id])
+  letter_id              BigInt  @db.BigInt()
+  letter                 Letter  @relation(fields: [letter_id], references: [letter_id])
+  status                 Int     @default(0) @db.SmallInt()
+
+  @@map("subscription_letter")
+}
+
+model Atlas {
+  atlas_id      BigInt    @id @default(autoincrement()) @db.BigInt()
+  user_id       BigInt    @db.BigInt()
+  user          User      @relation(fields: [user_id], references: [user_id])
+  asteroid_id   Int?
+  asteroid      Asteroid? @relation(fields: [asteroid_id], references: [asteroid_id])
+  text          String?   @db.VarChar(255)
+  captured_time DateTime? @db.Timestamp()
+  created_time  DateTime  @default(now()) @db.Timestamp()
+
+  @@map("atlas")
+}
+
+model Asteroid {
+  asteroid_id   Int      @id @default(autoincrement())
+  asteroid_no   Int?
+  asteroid_name String?  @db.VarChar(64)
+
+  atlasItems Atlas[]
+
+  @@map("asteroid")
+}
+
+model Light {
+  light_id    Int     @id @default(autoincrement())
+  letter_id   BigInt  @db.BigInt()
+  letter      Letter  @relation(fields: [letter_id], references: [letter_id])
+  user_id     BigInt  @db.BigInt()
+  user        User    @relation(fields: [user_id], references: [user_id])
+  create_time DateTime @default(now()) @db.Timestamp()
+
+  @@map("light")
+}
+
+model Palette {
+  palette_id   BigInt   @id @default(autoincrement()) @db.BigInt()
+  palette_name String   @db.VarChar(32)
+  colors       Json
+  created_time DateTime @default(now()) @db.Timestamp()
+
+  users User[]
+
+  @@map("palette")
+}
+
+model LetterDecode {
+  decode_id Int    @id @default(autoincrement())
+  letter_id BigInt @db.BigInt()
+  letter    Letter @relation(fields: [letter_id], references: [letter_id])
+  my_id     BigInt @db.BigInt()
+  my        User   @relation(fields: [my_id], references: [user_id])
+  status    Boolean @default(false)
+
+  @@map("letter_decode")
+}
+
+model MessageBox {
+  box_id    Int    @id @default(autoincrement())
+  type      Int    @db.SmallInt()
+  my_id     BigInt @db.BigInt()
+  my        User   @relation(fields: [my_id], references: [user_id])
+  letter_id BigInt @db.BigInt()
+  letter    Letter @relation(fields: [letter_id], references: [letter_id])
+
+  @@map("message_box")
+}

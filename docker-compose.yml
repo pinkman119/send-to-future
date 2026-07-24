@@ -1,0 +1,11 @@
+# 在项目根目录一键启动整套后端服务（PostgreSQL + NestJS）
+#
+#   用法：
+#     docker-compose up --build        # 构建并启动
+#     docker-compose up -d --build     # 后台运行
+#     docker-compose down              # 停止并移除容器（保留 pgdata 数据卷）
+#     docker-compose down -v           # 停止并删除数据卷（清空数据库）
+#
+# 复用后端目录里的编排定义（PostgreSQL + 应用镜像）。
+include:
+  - send-to-future-nest/docker-compose.yml
