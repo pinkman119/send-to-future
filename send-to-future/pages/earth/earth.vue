@@ -462,6 +462,7 @@ import saturnImg from '@/img/土星.png';
 import uranusImg from '@/img/天王星.png';
 import neptuneImg from '@/img/海王星.png';
 import plutoImg from '@/img/冥王星.png';
+import { get, post, put, del } from '@/uni-app/utils/request.js';
 const channelNames = { mail: '手写信件', qqmail: 'QQ邮箱', sms: '短信推送', unbreakable: '牢不可破的誓言' };
 const coordTypes = [
   { type: 'phone',  icon: '📱', label: '手机号',   placeholder: '请输入手机号',     bg: 'rgba(255,213,107,.1)' },
@@ -488,12 +489,22 @@ const sampleLetters = [
   { id:'L15', content:"致十年后的我：\n\n如果那时候你依然单身，请不要焦虑。\n\n28岁的我，一个人看电影，一个人吃火锅，一个人旅行。不是没人陪，是我享受独处。\n\n希望你依然拥有这份自在。也希望你遇到了那个让独处变得更美好的人——如果还没有，也没关系。", star:'gold', from:'一位自由人', avatar:'🌠', likes:1023, asteroid:'小行星 #2025-UV90' },
 ];
 
+/**
+ * 根据点赞数判断信号强度等级。
+ * @param {number} likes - 信件的点赞数
+ * @returns {number} 等级：0=无信号，1=微弱信号，2=强烈信号
+ */
 function getSignalTier(likes) {
   if (likes >= 1000) return 2;
   if (likes >= 100) return 1;
   return 0;
 }
 
+/**
+ * 根据种子字符串生成稳定的星球编号（EARTH-xxxxx）。
+ * @param {string|number} seed - 用于生成编号的种子
+ * @returns {string} 形如「EARTH-12345」的星球编号
+ */
 function genPlanetCode(seed) {
   let h = 0;
   const s = String(seed || '');
@@ -501,12 +512,22 @@ function genPlanetCode(seed) {
   return 'EARTH-' + String(h % 100000).padStart(5, '0');
 }
 
+/**
+ * 将点赞数格式化为带单位（w/k）的短字符串。
+ * @param {number} n - 原始点赞数
+ * @returns {string} 压缩显示后的点赞数
+ */
 function formatLikeCount(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
   return String(n);
 }
 
+/**
+ * 将日期格式化为「年.月.日」字符串。
+ * @param {Date} d - 需要格式化的日期对象
+ * @returns {string} 形如「2026.07.25」的日期字符串
+ */
 function formatDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -526,10 +547,19 @@ const PLANET_IMAGES = {
   neptune: neptuneImg,
   pluto: plutoImg,
 };
+/**
+ * 随机生成一个演示用的星球编号。
+ * @returns {string} 形如「MARS-12345」的星球编号
+ */
 function randPlanetId() {
   const n = planetLitNames[Math.floor(Math.random() * planetLitNames.length)];
   return n + '-' + String(Math.floor(Math.random() * 90000) + 10000);
 }
+/**
+ * 生成指定数量的演示点赞用户列表。
+ * @param {number} count - 需要生成的用户数量
+ * @returns {Array<object>} 点赞用户数组
+ */
 function genDemoLitUsers(count) {
   const list = [];
   const now = Date.now();
@@ -545,6 +575,11 @@ function genDemoLitUsers(count) {
   return list;
 }
 
+/**
+ * 计算未来日期距离今天的时间差，并转为「天/月/年」文本。
+ * @param {Date} futureDate - 目标未来日期
+ * @returns {string} 人类可读的时间差
+ */
 function getDateDiff(futureDate) {
   const now = new Date();
   const diff = futureDate - now;
@@ -554,6 +589,11 @@ function getDateDiff(futureDate) {
   return `${Math.floor(days / 365)} 年`;
 }
 
+/**
+ * 对字符串做简单的 31 进制哈希，用于生成稳定的伪随机值。
+ * @param {string} str - 待哈希的字符串
+ * @returns {number} 无符号整型哈希值
+ */
 function hashStr(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -561,6 +601,11 @@ function hashStr(str) {
   }
   return h;
 }
+/**
+ * 将文本字符替换为随机的乱码符号（空格与换行保留），用于加密预览。
+ * @param {string} text - 原始文本
+ * @returns {string} 乱码化后的字符串
+ */
 function garble(text) {
   if (!text) return '';
   const pool = '█▓▒░✦✧⚡☄★☆♺♻⍰⍾⧫⬡◈⟁⌗▦▩⍢⍣⍤⍥⍨◇◆▢▣§¶†‡';
@@ -574,6 +619,10 @@ function garble(text) {
 }
 
 export default {
+  /**
+   * 组件的响应式数据。
+   * @returns {object} 包含用户信息、各子标签页数据、弹窗状态及模态框数据的数据对象
+   */
   data() {
     return {
       userId: '',
@@ -631,63 +680,135 @@ export default {
     };
   },
   computed: {
+    /**
+     * 我寄出的信件数量。
+     * @returns {number} 寄出信件数
+     */
     sentCount() { return this.sentLetters.length; },
+    /**
+     * 我寄出信件累计被点亮的总次数。
+     * @returns {number} 总点亮次数
+     */
     litCount() {
       return (this.sentLetters || []).reduce((sum, l) => sum + (Number(l.likes) || 0), 0);
     },
+    /**
+     * 我点过赞的信件数量。
+     * @returns {number} 点赞信件数
+     */
     likedCount() {
       const app = getApp();
       const liked = app.globalData.likedLetterIds || new Set();
       return liked.size;
     },
+    /**
+     * 寄给我的信件数量。
+     * @returns {number} 收到的信件数
+     */
     receivedCount() { return this.receivedLetters.length; },
+    /**
+     * 已保存的联络坐标数量。
+     * @returns {number} 坐标数量
+     */
     coordsCount() { return this.myCoords.length; },
+    /**
+     * 信号箱中未读消息数量。
+     * @returns {number} 未读数
+     */
     unreadCount() { return this.inboxItems.filter(i => !i.read).length; },
+    /**
+     * 根据收听者数量计算环绕的卫星数量（1~5 颗）。
+     * @returns {number} 卫星数量
+     */
     satelliteCount() {
       return Math.min(5, Math.max(1, this.listenersCount));
     },
 
+    /**
+     * 当前选中星球对应的图片。
+     * @returns {string} 星球图片路径
+     */
     currentPlanetImg() {
       const p = this.planetOptions.find(o => o.id === this.currentPlanetId);
       return p ? p.img : PLANET_IMAGES.mars;
     },
+    /**
+     * 当前可用的星球调色板列表。
+     * @returns {Array<object>} 调色板数组
+     */
     satPalettes() {
       const app = getApp();
       return (app.globalData && app.globalData.satPalettes) || [];
     },
+    /**
+     * 根据当前调色板索引取颜色数组。
+     * @returns {Array<string>} 颜色数组
+     */
     satelliteColors() {
       const pal = this.satPalettes[this.currentPaletteIndex];
       return pal ? pal.colors : ['#00e5ff', '#a855f7', '#4facfe', '#ff6b9d', '#4ade80'];
     },
+    /**
+     * 根据选中的坐标类型取对应的输入占位提示。
+     * @returns {string} 占位提示文本
+     */
     currentCoordPlaceholder() {
       const t = coordTypes.find(ct => ct.type === this.selectedCoordType);
       return t ? t.placeholder : '请输入';
     },
   },
+  /**
+   * 组件挂载后：生成用户 ID 并渲染页面数据。
+   */
   mounted() {
     this.userId = 'EARTH-' + String(Math.floor(Math.random() * 9000) + 1000);
     this.renderPage();
   },
+  /**
+   * 页面显示时：重新渲染页面数据。
+   */
   onShow() {
     this.renderPage();
   },
+  /**
+   * 页面隐藏时：停止进度定时器。
+   */
   onHide() {
     this.stopProgressTimer();
   },
+  /**
+   * 页面卸载时：停止进度定时器，避免内存泄漏。
+   */
   onUnload() {
     this.stopProgressTimer();
   },
   methods: {
+    /**
+     * 空操作占位函数（用于阻止弹窗冒泡穿透）。
+     */
     noop() {},
+    /**
+     * 提示卫星数量随收听者数量增加的规则。
+     */
     showSatelliteTip() {
       uni.showToast({ title: '卫星数量会随收听者数量而增加', icon: 'none', duration: 2000 });
     },
+    /**
+     * 打开「我的星球」选择弹窗。
+     */
     openPlanetModal() {
       this.showPlanetModal = true;
     },
+    /**
+     * 关闭「我的星球」选择弹窗。
+     */
     closePlanetModal() {
       this.showPlanetModal = false;
     },
+    /**
+     * 选择星球并同步到全局状态与底部 tab 图标。
+     * @param {string} id - 星球标识
+     */
     selectPlanet(id) {
       this.currentPlanetId = id;
       const app = getApp();
@@ -695,12 +816,19 @@ export default {
       app.globalData.saveState();
       this.syncPlanetToTab();
     },
+    /**
+     * 将当前星球图片同步到全局状态并广播给底部 tab 栏。
+     */
     syncPlanetToTab() {
       const app = getApp();
       const img = this.currentPlanetImg;
       if (app.globalData) app.globalData.myPlanetImg = img;
       uni.$emit('planet-change', img);
     },
+    /**
+     * 选择星球调色板并广播调色板变化事件。
+     * @param {number} idx - 调色板索引
+     */
     selectPalette(idx) {
       this.currentPaletteIndex = idx;
       const app = getApp();
@@ -708,7 +836,10 @@ export default {
       app.globalData.saveState();
       uni.$emit('palette-change', idx);
     },
-    renderPage() {
+    /**
+     * 渲染页面：整合收听者、信号箱、寄出/收到/点赞信件与坐标等全部数据。
+     */
+    async renderPage() {
       const app = getApp();
 
       // 收听者数量（被他人收听）直接决定卫星数量：1 位收听者 = 1 颗卫星，最多 5 颗
@@ -914,14 +1045,14 @@ export default {
         };
       });
 
-      // Coords
-      this.myCoords = (app.globalData.myCoords || []).map(c => {
-        const meta = coordTypes.find(t => t.type === c.type) || coordTypes[0];
-        return { ...c, _meta: meta };
-      });
+      // Coords：以接口返回为唯一来源，移除对 globalData.myCoords 的本地读写
+      await this.loadCoords();
 
       this.startProgressTimer();
     },
+    /**
+     * 启动每秒刷新寄出信件送达进度的定时器。
+     */
     startProgressTimer() {
       this.stopProgressTimer();
       this.progressTimer = setInterval(() => {
@@ -942,30 +1073,58 @@ export default {
         this.sentLetters = updated;
       }, 1000);
     },
+    /**
+     * 停止并清空寄出信件进度定时器。
+     */
     stopProgressTimer() {
       if (this.progressTimer) { clearInterval(this.progressTimer); this.progressTimer = null; }
     },
+    /**
+     * 切换当前的子标签页（寄出/寄给我的/坐标）。
+     * @param {string} tab - 子标签标识
+     */
     switchSubtab(tab) {
       this.activeSubtab = tab;
     },
+    /**
+     * 打开「收听我的人」列表弹窗。
+     */
     openListeners() {
       this.showListeners = true;
     },
+    /**
+     * 关闭「收听我的人」列表弹窗。
+     */
     closeListeners() {
       this.showListeners = false;
     },
+    /**
+     * 打开信号箱弹窗。
+     */
     openInbox() {
       this.showInbox = true;
     },
+    /**
+     * 关闭信号箱弹窗。
+     */
     closeInbox() {
       this.showInbox = false;
     },
+    /**
+     * 打开解码弹窗。
+     */
     openDecode() {
       this.showDecode = true;
     },
+    /**
+     * 关闭解码弹窗。
+     */
     closeDecode() {
       this.showDecode = false;
     },
+    /**
+     * 从剪贴板粘贴解码代码到输入框。
+     */
     pasteCode() {
       const that = this;
       uni.getClipboardData({
@@ -973,6 +1132,9 @@ export default {
         fail() { uni.showToast({ title: '粘贴失败，请手动输入', icon: 'none' }); }
       });
     },
+    /**
+     * 根据输入或粘贴的代码解码一封星际信件，并处理加锁/解锁逻辑。
+     */
     decodeLetter() {
       const raw = (this.decodeInput || '').trim();
       if (!raw) {
@@ -1012,10 +1174,17 @@ export default {
         garbled: garble(content),
       };
     },
+    /**
+     * 重置解码结果，清空输入框以便再解一封。
+     */
     resetDecode() {
       this.decodedLetter = null;
       this.decodeInput = '';
     },
+    /**
+     * 将信号箱某条消息标记为已读并同步全局状态。
+     * @param {object} item - 信号箱消息对象
+     */
     markInboxRead(item) {
       if (item.read) return;
       item.read = true;
@@ -1027,45 +1196,101 @@ export default {
         app.globalData.saveState();
       }
     },
+    /**
+     * 新增坐标：重置编辑状态并打开坐标编辑器。
+     */
     addCoord() {
       this.editingCoordId = null;
       this.selectedCoordType = 'phone';
       this.coordInputVal = '';
       this.showCoordEditor = true;
     },
+    /**
+     * 编辑已有坐标：回填数据并打开坐标编辑器。
+     * @param {object} c - 待编辑的坐标对象
+     */
     editCoord(c) {
       this.editingCoordId = c.id;
       this.selectedCoordType = c.type;
       this.coordInputVal = c.value;
       this.showCoordEditor = true;
     },
+    /**
+     * 取消坐标编辑，关闭编辑器。
+     */
     cancelCoordEdit() {
       this.showCoordEditor = false;
     },
-    saveCoord() {
+    /**
+     * 确保已登录：本地无令牌时调用 mock 登录（仅联调用）获取并缓存 token。
+     */
+    async ensureLogin() {
+      const token = uni.getStorageSync('stf_token');
+      if (token) return;
+      try {
+        const res = await post('/wechat/mock-login', {});
+        if (res && res.token) {
+          uni.setStorageSync('stf_token', res.token);
+          uni.setStorageSync('stf_user', res.user);
+        }
+      } catch (e) {
+        // 忽略：loadCoords 会因未登录返回错误并提示
+      }
+    },
+    /**
+     * 从后端拉取当前用户全部未删除坐标，并映射为页面渲染所需的 myCoords。
+     */
+    async loadCoords() {
+      await this.ensureLogin();
+      try {
+        const list = await get('/coord');
+        this.myCoords = (list || []).map(c => {
+          const meta = coordTypes.find(t => t.type === c.coordType) || coordTypes[0];
+          return { id: c.coordId, type: c.coordType, value: c.coordValue, _meta: meta };
+        });
+      } catch (e) {
+        uni.showToast({ title: '坐标加载失败', icon: 'none' });
+      }
+    },
+    /**
+     * 保存坐标：新增走 POST，编辑走 PUT；成功后以接口最新列表刷新页面。
+     */
+    async saveCoord() {
       const val = this.coordInputVal.trim();
       if (!val) { uni.showToast({ title: '请输入内容', icon: 'none' }); return; }
-      const app = getApp();
-      if (!app.globalData.myCoords) app.globalData.myCoords = [];
-      if (this.editingCoordId) {
-        const c = app.globalData.myCoords.find(c => c.id === this.editingCoordId);
-        if (c) { c.type = this.selectedCoordType; c.value = val; }
-        uni.showToast({ title: '坐标已更新', icon: 'none' });
-      } else {
-        app.globalData.myCoords.push({ id: 'COORD' + Date.now(), type: this.selectedCoordType, value: val });
-        uni.showToast({ title: '坐标已保存', icon: 'none' });
+      await this.ensureLogin();
+      try {
+        if (this.editingCoordId) {
+          await put('/coord/' + this.editingCoordId, { coordType: this.selectedCoordType, coordValue: val });
+          uni.showToast({ title: '坐标已更新', icon: 'none' });
+        } else {
+          await post('/coord', { coordType: this.selectedCoordType, coordValue: val });
+          uni.showToast({ title: '坐标已保存', icon: 'none' });
+        }
+        this.showCoordEditor = false;
+        await this.loadCoords();
+      } catch (e) {
+        // request.js 已统一提示错误信息
       }
-      app.globalData.saveState();
-      this.showCoordEditor = false;
-      this.renderPage();
     },
-    deleteCoord(id) {
-      const app = getApp();
-      app.globalData.myCoords = (app.globalData.myCoords || []).filter(c => c.id !== id);
-      app.globalData.saveState();
-      uni.showToast({ title: '已删除该坐标', icon: 'none' });
-      this.renderPage();
+    /**
+     * 删除指定坐标（调用后端软删除），成功后以最新列表刷新页面。
+     * @param {string} id - 待删除的坐标 id
+     */
+    async deleteCoord(id) {
+      await this.ensureLogin();
+      try {
+        await del('/coord/' + id);
+        uni.showToast({ title: '已删除该坐标', icon: 'none' });
+        await this.loadCoords();
+      } catch (e) {
+        // request.js 已统一提示错误信息
+      }
     },
+    /**
+     * 打开「我点赞的信件」详情弹窗并填充数据。
+     * @param {object} l - 点赞的信件对象
+     */
     viewLikedLetter(l) {
       const app = getApp();
       const likedSet = app.globalData.likedLetterIds || new Set();
@@ -1090,6 +1315,10 @@ export default {
       this.isModalLit = likedSet.has(l.id);
       this.showModal = true;
     },
+    /**
+     * 打开「我寄出的信」详情弹窗，按送达/锁定状态填充内容。
+     * @param {object} l - 寄出的信件对象
+     */
     viewSentLetter(l) {
       this.currentModalLetter = l;
       this.modalIsMine = true;
@@ -1112,6 +1341,10 @@ export default {
       }
       this.showModal = true;
     },
+    /**
+     * 查看寄给我的信件：未解密时震动提示，已解密则填充弹窗数据。
+     * @param {object} r - 收到的信件对象
+     */
     viewReceivedLetter(r) {
       // 未到解密时间：震动并提示，无法查看内容
       if (!r._unlocked) {
@@ -1135,7 +1368,13 @@ export default {
       this.modalLikeNum = '';
       this.showModal = true;
     },
+    /**
+     * 关闭信件详情弹窗。
+     */
     closeModal() { this.showModal = false; },
+    /**
+     * 切换当前信件的「点亮」状态，并区分自己/他人信件的存储逻辑。
+     */
     toggleLight() {
       if (!this.currentModalLetter) return;
       const app = getApp();
@@ -1179,12 +1418,18 @@ export default {
       app.globalData.saveState();
       this.renderPage();
     },
+    /**
+     * 打开当前信件的点亮者列表弹窗。
+     */
     openLitList() {
       this.litList = (this.currentModalLetter && this.currentModalLetter.litUsers)
         ? this.currentModalLetter.litUsers.slice()
         : [];
       this.showLitList = true;
     },
+    /**
+     * 关闭点亮者列表弹窗。
+     */
     closeLitList() {
       this.showLitList = false;
     },

@@ -366,13 +366,24 @@ export default {
     };
   },
   computed: {
+    /**
+     * 当前编辑对象（self 或 someone 模式对应的数据）
+     * @returns {object} 当前模式下的信件数据
+     */
     current() {
       return this.mode === 'self' ? this.self : this.someone;
     },
+    /**
+     * 预设送达年限选项
+     * @returns {Array<number>} 年限数组
+     */
     presetYears() {
       return [1, 3, 10];
     },
-    // 自定义日期最早可选范围：根据所选送达渠道而定
+    /**
+     * 自定义日期最早可选范围：根据所选送达渠道而定
+     * @returns {string} ISO 格式日期
+     */
     customMinDate() {
       const ch = this.current.selectedChannel;
       let addDays = 1;
@@ -384,23 +395,43 @@ export default {
       d.setDate(d.getDate() + addDays);
       return this.formatDateISO(d);
     },
+    /**
+     * 自定义日期最晚可选范围（当前年份 +100 年）
+     * @returns {string} ISO 格式日期
+     */
     customMaxDate() {
       const d = new Date();
       d.setFullYear(d.getFullYear() + 100);
       return this.formatDateISO(d);
     },
+    /**
+     * 自定义日期选择器的初始值
+     * @returns {string} ISO 格式日期
+     */
     customPickerValue() {
       if (this.current.customDate) {
         return this.formatDateISO(this.parseDotDate(this.current.customDate));
       }
       return this.customMinDate;
     },
+    /**
+     * 自定义日期提示文案（将点分日期展示）
+     * @returns {string} 提示文案
+     */
     customDateHint() {
       return this.customMinDate.replace(/-/g, '.');
     },
+    /**
+     * 当前是否为「牢不可破的誓言」渠道
+     * @returns {boolean} 是返回 true
+     */
     isUnbreakableChannel() {
       return this.coordChannel === 'unbreakable';
     },
+    /**
+     * 根据当前渠道筛选并映射「我的地球坐标」列表
+     * @returns {Array<object>} 相关坐标列表
+     */
     coordSavedList() {
       const relevantTypes = this.isUnbreakableChannel
         ? ['phone', 'email', 'address']
@@ -414,40 +445,80 @@ export default {
         return { ...c, icon: meta.icon };
       });
     },
+    /**
+     * 发射按钮文案（随点火/模式变化）
+     * @returns {string} 按钮文案
+     */
     launchBtnText() {
       if (this.igniting) return '🔥 点火中…';
       return this.current.launchOnlyMode ? '✨ 仅发射到星海' : '🚀 发射至星际';
     },
   },
+  /**
+   * 组件挂载后写入当前日期
+   */
   mounted() {
     this.currentDate = this.formatDate(new Date());
   },
   methods: {
+    /**
+     * 空操作（用于事件占位）
+     */
     noop() {},
+    /**
+     * 格式化日期为 YYYY.MM.DD
+     * @param {Date} d - 日期对象
+     * @returns {string} 格式化后的日期字符串
+     */
     formatDate(d) {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}.${m}.${day}`;
     },
+    /**
+     * 计算 years 年后的日期
+     * @param {number} years - 年数
+     * @returns {string} 格式化后的日期字符串
+     */
     getFutureDate(years) {
       const d = new Date();
       d.setFullYear(d.getFullYear() + years);
       return this.formatDate(d);
     },
+    /**
+     * 格式化为 ISO 日期（YYYY-MM-DD）
+     * @param {Date} d - 日期对象
+     * @returns {string} ISO 格式日期
+     */
     formatDateISO(d) {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     },
+    /**
+     * 将 ISO 日期转换为点分日期（YYYY.MM.DD）
+     * @param {string} s - ISO 日期字符串
+     * @returns {string} 点分格式日期
+     */
     formatDateFromISO(s) {
       return s.replace(/-/g, '.');
     },
+    /**
+     * 解析点分日期为 Date 对象
+     * @param {string} s - 点分日期字符串
+     * @returns {Date} 日期对象
+     */
     parseDotDate(s) {
       const [y, m, d] = s.split('.').map(Number);
       return new Date(y, m - 1, d);
     },
+    /**
+     * 计算未来日期与现在的时间差描述
+     * @param {Date} futureDate - 未来日期
+     * @returns {string} 如 "3 个月" / "2 年"
+     */
     getDateDiff(futureDate) {
       const now = new Date();
       const diff = futureDate - now;
@@ -456,22 +527,42 @@ export default {
       if (days < 365) return `${Math.floor(days / 30)} 个月`;
       return `${Math.floor(days / 365)} 年`;
     },
+    /**
+     * 将坐标类型映射为字段 key
+     * @param {string} type - 坐标类型
+     * @returns {string} 字段 key
+     */
     coordTypeToFieldKey(type) {
       const map = { phone: 'phone', wechat: 'wechat', email: 'email', address: 'address' };
       return map[type] || type;
     },
+    /**
+     * 选择送达渠道并清除自定义日期
+     * @param {string} channel - 渠道标识
+     */
     selectChannel(channel) {
       this.current.selectedChannel = channel;
       this.current.customDate = null;
     },
+    /**
+     * 选择送达年限并清除自定义日期
+     * @param {number} years - 年数
+     */
     selectYears(years) {
       this.current.selectedYears = years;
       this.current.customDate = null;
     },
+    /**
+     * 自定义日期选择器变更回调
+     * @param {object} e - 变更事件
+     */
     onCustomDateChange(e) {
       this.current.customDate = this.formatDateFromISO(e.detail.value);
       this.current.selectedYears = null;
     },
+    /**
+     * 切换信件公开/加密状态并提示
+     */
     toggleVisibility() {
       this.current.isEncrypted = !this.current.isEncrypted;
       if (this.current.isEncrypted) {
@@ -480,6 +571,10 @@ export default {
         this.showToast('🌐 信件已设为公开，将出现在「星系」星海');
       }
     },
+    /**
+     * 展示 Toast 提示（3 秒后淡出）
+     * @param {string} msg - 提示文本
+     */
     showToast(msg) {
       this.toastMsg = msg;
       this.toastOpacity = 1;
@@ -489,6 +584,9 @@ export default {
         setTimeout(() => { this.toastMsg = ''; }, 300);
       }, 3000);
     },
+    /**
+     * 开始点火蓄力：校验输入并启动蓄力计时与动画帧
+     */
     startIgnite() {
       if (this.igniting || this.showOverlay || this.showCoordPopup) return;
       if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
@@ -507,6 +605,9 @@ export default {
       this._igniteTimer = setTimeout(() => this.fireLaunch(), this._igniteFull);
       this._scheduleFrame();
     },
+    /**
+     * 调度下一帧点火动画（兼容无 requestAnimationFrame 环境）
+     */
     _scheduleFrame() {
       if (!this._rafFn) {
         const w = (typeof window !== 'undefined') ? window : {};
@@ -515,15 +616,30 @@ export default {
       }
       this._igniteRAF = this._rafFn(this.igniteLoop);
     },
+    /**
+     * 返回高精度当前时间（降级到 Date.now）
+     * @returns {number} 当前时间戳
+     */
     _now() {
       return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     },
+    /**
+     * 线性插值两个 RGB 颜色
+     * @param {Array<number>} a - 起始颜色 [r,g,b]
+     * @param {Array<number>} b - 目标颜色 [r,g,b]
+     * @param {number} t - 插值比例 0~1
+     * @returns {string} rgb 颜色字符串
+     */
     _lerpColor(a, b, t) {
       const r = Math.round(a[0] + (b[0] - a[0]) * t);
       const g = Math.round(a[1] + (b[1] - a[1]) * t);
       const bl = Math.round(a[2] + (b[2] - a[2]) * t);
       return `rgb(${r},${g},${bl})`;
     },
+    /**
+     * 点火动画逐帧回调：根据蓄力进度更新抖动与颜色
+     * @param {number} ts - 帧时间戳
+     */
     igniteLoop(ts) {
       if (!this.igniting) return;
       if (!this._lastTs) this._lastTs = ts;
@@ -549,6 +665,9 @@ export default {
       this.igniteProgress = p;
       if (this.igniting) this._scheduleFrame();
     },
+    /**
+     * 松手结束按压：极短轻点直接发射，否则等待蓄力满
+     */
     endPress() {
       if (!this.igniting) return;
       const held = Date.now() - this._pressStart;
@@ -559,16 +678,25 @@ export default {
       }
       // 其余情况：持续蓄力至满，由 fireLaunch 触发
     },
+    /**
+     * 蓄力满后触发发射
+     */
     fireLaunch() {
       if (!this.igniting) return;
       this.clearIgnite();
       this.handleLaunch();
     },
+    /**
+     * 中断点火并提示
+     */
     cancelIgnite() {
       if (!this.igniting) return;
       this.clearIgnite();
       this.showToast('点火中断，松手太快啦');
     },
+    /**
+     * 清理点火状态与计时器/动画帧
+     */
     clearIgnite() {
       this.igniting = false;
       this.igniteProgress = 0;
@@ -578,6 +706,9 @@ export default {
       if (this._igniteTimer) clearTimeout(this._igniteTimer);
       this._igniteTimer = null;
     },
+    /**
+     * 处理发射流程：校验后弹出坐标填写弹窗或直接发射
+     */
     handleLaunch() {
       if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
       if (this.current.launchOnlyMode) {
@@ -598,20 +729,37 @@ export default {
       this.coordFieldValues = fieldValues;
       this.coordExtraContacts = [];
     },
+    /**
+     * 关闭坐标填写弹窗
+     */
     closeCoordPopup() {
       this.showCoordPopup = false;
     },
+    /**
+     * 从已保存坐标点击填入对应字段
+     * @param {object} c - 已保存坐标项
+     */
     fillFromSavedCoord(c) {
       const fieldKey = this.coordTypeToFieldKey(c.type);
       this.coordFieldValues[fieldKey] = c.value;
       this.showToast(`已填入：${c.value}`);
     },
+    /**
+     * 新增一个备选联系人输入框
+     */
     addExtraContact() {
       this.coordExtraContacts.push('');
     },
+    /**
+     * 移除指定备选联系人
+     * @param {number} idx - 索引
+     */
     removeExtraContact(idx) {
       this.coordExtraContacts.splice(idx, 1);
     },
+    /**
+     * 确认坐标：校验必填后发起支付或发射
+     */
     confirmCoord() {
       const contacts = {};
       let valid = true;
@@ -642,6 +790,11 @@ export default {
         this.proceedWithLaunch(contacts);
       }
     },
+    /**
+     * 模拟微信支付，支付成功后继续发射（真实环境调用 uni.requestPayment）
+     * @param {number} price - 金额
+     * @param {object} contacts - 联络信息
+     */
     simulateWechatPay(price, contacts) {
       this.showToast(`💳 正在发起微信支付\n ${price.toFixed(2)}`);
       // 真实环境调用 uni.requestPayment({ provider: 'wxpay', ... }) 完成支付
@@ -650,6 +803,11 @@ export default {
         this.proceedWithLaunch(contacts);
       }, 1200);
     },
+    /**
+     * 真正执行发射：组装信件、写入 globalData 并播放成功动画
+     * @param {object|null} contacts - 联络信息（仅发射模式为 null）
+     * @param {boolean} [isLaunchOnly] - 是否仅发射模式
+     */
     proceedWithLaunch(contacts, isLaunchOnly) {
       const mode = this.mode;
       const content = this.current.letterContent.trim();
@@ -725,6 +883,9 @@ export default {
         this.showSuccess = true;
       }, 2200);
     },
+    /**
+     * 关闭发射成功浮层并重置表单
+     */
     closeOverlay() {
       this.showOverlay = false;
       this.animationStage = '';
@@ -740,6 +901,9 @@ export default {
       this.current.from = '';
       this.current.to = '';
     },
+    /**
+     * 切换「仅发射」模式并提示
+     */
     toggleLaunchOnly() {
       this.current.launchOnlyMode = !this.current.launchOnlyMode;
       if (this.current.launchOnlyMode) {
@@ -748,14 +912,26 @@ export default {
         this.showToast('已切换回常规发射\n可选择送达方式与日期');
       }
     },
+    /**
+     * 切换寄信模式（self / someone）
+     * @param {string} mode - 目标模式
+     */
     setMode(mode) {
       this.mode = mode;
     },
+    /**
+     * 记录滑动起始坐标
+     * @param {object} e - 触摸事件
+     */
     onSwipeStart(e) {
       const t = e.touches && e.touches[0];
       this._swipeStartX = t ? t.clientX : 0;
       this._swipeStartY = t ? t.clientY : 0;
     },
+    /**
+     * 滑动结束：根据横向位移切换寄信模式
+     * @param {object} e - 触摸事件
+     */
     onSwipeEnd(e) {
       const t = e.changedTouches && e.changedTouches[0];
       if (!t) return;

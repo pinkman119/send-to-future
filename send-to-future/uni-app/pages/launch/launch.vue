@@ -256,6 +256,10 @@ const coordTypeMap = {
 };
 
 export default {
+  /**
+   * 组件的响应式数据。
+   * @returns {object} 包含信件内容、送达配置、坐标弹窗及动画状态的数据对象
+   */
   data() {
     return {
       letterContent: '',
@@ -286,9 +290,17 @@ export default {
     };
   },
   computed: {
+    /**
+     * 判断当前渠道是否为「牢不可破的誓言」渠道。
+     * @returns {boolean} 是否为不可破渠道
+     */
     isUnbreakableChannel() {
       return this.coordChannel === 'unbreakable';
     },
+    /**
+     * 根据当前渠道筛选地球中已保存的可用坐标列表。
+     * @returns {Array<object>} 过滤并补充图标后的坐标数组
+     */
     coordSavedList() {
       const relevantTypes = this.isUnbreakableChannel
         ? ['phone', 'email', 'address']
@@ -303,22 +315,43 @@ export default {
       });
     },
   },
+  /**
+   * 组件挂载后：初始化当前日期显示。
+   */
   mounted() {
     this.currentDate = this.formatDate(new Date());
   },
   methods: {
+    /**
+     * 空操作占位函数（用于阻止弹窗冒泡穿透）。
+     */
     noop() {},
+    /**
+     * 将日期格式化为「年.月.日」字符串。
+     * @param {Date} d - 需要格式化的日期对象
+     * @returns {string} 形如「2026.07.25」的日期字符串
+     */
     formatDate(d) {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}.${m}.${day}`;
     },
+    /**
+     * 计算指定年数后的未来日期字符串。
+     * @param {number} years - 距离现在的年数
+     * @returns {string} 未来日期字符串
+     */
     getFutureDate(years) {
       const d = new Date();
       d.setFullYear(d.getFullYear() + years);
       return this.formatDate(d);
     },
+    /**
+     * 计算未来日期距离今天的时间差，并转为「天/月/年」文本。
+     * @param {Date} futureDate - 目标未来日期
+     * @returns {string} 人类可读的时间差
+     */
     getDateDiff(futureDate) {
       const now = new Date();
       const diff = futureDate - now;
@@ -327,16 +360,32 @@ export default {
       if (days < 365) return `${Math.floor(days / 30)} 个月`;
       return `${Math.floor(days / 365)} 年`;
     },
+    /**
+     * 将坐标类型映射为对应的表单字段 key。
+     * @param {string} type - 坐标类型（phone/email/address/wechat 等）
+     * @returns {string} 表单字段 key
+     */
     coordTypeToFieldKey(type) {
       const map = { phone: 'phone', wechat: 'wechat', email: 'email', address: 'address' };
       return map[type] || type;
     },
+    /**
+     * 选择送达渠道。
+     * @param {string} channel - 渠道标识
+     */
     selectChannel(channel) {
       this.selectedChannel = channel;
     },
+    /**
+     * 选择送达年数。
+     * @param {number} years - 年数
+     */
     selectYears(years) {
       this.selectedYears = years;
     },
+    /**
+     * 切换信件加密/公开状态，并弹出对应提示。
+     */
     toggleVisibility() {
       this.isEncrypted = !this.isEncrypted;
       if (this.isEncrypted) {
@@ -345,6 +394,10 @@ export default {
         this.showToast('🌐 信件已设为公开，将出现在「星系」星海');
       }
     },
+    /**
+     * 显示一段提示文字，3 秒后自动淡出。
+     * @param {string} msg - 提示内容
+     */
     showToast(msg) {
       this.toastMsg = msg;
       this.toastOpacity = 1;
@@ -354,6 +407,9 @@ export default {
         setTimeout(() => { this.toastMsg = ''; }, 300);
       }, 3000);
     },
+    /**
+     * 点击发射：校验必填项后打开坐标填写弹窗并初始化字段。
+     */
     handleLaunch() {
       if (!this.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
       if (!this.selectedChannel) { this.showToast('请选择送达方式'); return; }
@@ -369,20 +425,37 @@ export default {
       this.coordFieldValues = fieldValues;
       this.coordExtraContacts = [];
     },
+    /**
+     * 关闭坐标填写弹窗。
+     */
     closeCoordPopup() {
       this.showCoordPopup = false;
     },
+    /**
+     * 从已保存坐标中填入对应表单字段。
+     * @param {object} c - 已保存的坐标对象
+     */
     fillFromSavedCoord(c) {
       const fieldKey = this.coordTypeToFieldKey(c.type);
       this.coordFieldValues[fieldKey] = c.value;
       this.showToast(`已填入：${c.value}`);
     },
+    /**
+     * 新增一个备选联系人输入框。
+     */
     addExtraContact() {
       this.coordExtraContacts.push('');
     },
+    /**
+     * 移除指定索引的备选联系人。
+     * @param {number} idx - 备选联系人索引
+     */
     removeExtraContact(idx) {
       this.coordExtraContacts.splice(idx, 1);
     },
+    /**
+     * 确认坐标：校验必填字段后关闭弹窗并进入发射流程。
+     */
     confirmCoord() {
       const contacts = {};
       let valid = true;
@@ -408,6 +481,10 @@ export default {
       this.showCoordPopup = false;
       this.proceedWithLaunch(contacts);
     },
+    /**
+     * 执行发射：保存信件、计算送达信息并播放成功动画。
+     * @param {object} contacts - 收件坐标联系人信息
+     */
     proceedWithLaunch(contacts) {
       const content = this.letterContent.trim();
       const channel = this.selectedChannel;
@@ -467,6 +544,9 @@ export default {
         this.showSuccess = true;
       }, 2200);
     },
+    /**
+     * 关闭发射成功浮层并重置发射表单与动画状态。
+     */
     closeOverlay() {
       this.showOverlay = false;
       this.animationStage = '';

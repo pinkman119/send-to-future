@@ -18,6 +18,10 @@
 <script>
 export default {
   name: 'customTabBar',
+  /**
+   * 返回自定义 TabBar 的初始数据
+   * @returns {object} 包含选中项、星球图片与 tab 列表的数据对象
+   */
   data() {
     return {
       selected: 0,
@@ -30,16 +34,25 @@ export default {
       ]
     }
   },
+  /**
+   * 组件创建时同步选中项与星球图片，并监听星球切换事件
+   */
   created() {
     this.syncSelected()
     this.syncPlanetImg()
     uni.$on('planet-change', (url) => { this.planetImg = url })
   },
+  /**
+   * TabBar 显示时同步选中项与星球图片
+   */
   onShow() {
     this.syncSelected()
     this.syncPlanetImg()
   },
   methods: {
+    /**
+     * 根据当前页面路由同步高亮的 tab 项
+     */
     syncSelected() {
       const pages = getCurrentPages()
       if (!pages || !pages.length) return
@@ -47,15 +60,28 @@ export default {
       const idx = this.list.findIndex(i => i.pagePath === route)
       if (idx !== -1) this.selected = idx
     },
+    /**
+     * 切换 tab 页
+     * @param {object} item - 目标 tab 项
+     * @param {number} index - tab 索引
+     */
     switchTab(item, index) {
       if (this.selected === index) return
       this.selected = index
       uni.switchTab({ url: '/' + item.pagePath })
     },
+    /**
+     * 从 globalData 同步星球图片
+     */
     syncPlanetImg() {
       const app = getApp()
       if (app.globalData && app.globalData.myPlanetImg) this.planetImg = app.globalData.myPlanetImg
     },
+    /**
+     * 返回指定 tab 的图标样式类（第 4 项有星球图片时返回空）
+     * @param {number} index - tab 索引
+     * @returns {string} 图标样式类名
+     */
     tabIconClass(index) {
       if (index === 3 && this.planetImg) return ''
       return 'ico-' + index

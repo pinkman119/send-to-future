@@ -1,0 +1,1053 @@
+/* =====================================================================
+   寄给未来 · 管理后台  ——  Metronic 8 (Keenthemes) 风格主题
+   颜色 / 圆角 / 阴影 / 间距对齐 Metronic 8 demo1 设计语言。
+   ===================================================================== */
+
+:root {
+  /* 布局尺寸 */
+  --sidebar-w: 265px;
+  --header-h: 65px;
+
+  /* 品牌色（Metronic 8 标准色板） */
+  --primary: #009ef7;
+  --primary-active: #0095e8;
+  --primary-light: #f1faff;
+  --success: #50cd89;
+  --success-light: #e8fff3;
+  --warning: #ffc700;
+  --warning-light: #fff8dd;
+  --danger: #f1416c;
+  --danger-light: #fff5f8;
+  --info: #7239ea;
+  --info-light: #f8f5ff;
+  --dark: #181c32;
+
+  /* 中性色 / 背景 */
+  --app-bg: #f5f8fa;
+  --card-bg: #ffffff;
+  --text-color: #181c32;
+  --text-muted: #7e8299;
+  --border-color: #f1f1f4; /* gray-300 */
+  --border-color-2: #e4e6ef; /* gray-400 */
+  --input-bg: #ffffff;
+
+  /* 侧边栏（深色） */
+  --sidebar-bg: #1e1e2d;
+  --sidebar-bg-2: #1b1b29;
+  --sidebar-text: #9899ac;
+  --sidebar-text-active: #ffffff;
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+
+  /* 顶栏 */
+  --header-bg: #ffffff;
+
+  /* 阴影与圆角 */
+  --shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 0 10px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 0 50px 0 rgba(82, 63, 105, 0.1);
+  --radius: 0.475rem; /* ≈ 7.6px，Metronic 卡片/按钮标准圆角 */
+  --radius-lg: 0.75rem;
+}
+
+[data-theme='dark'] {
+  --app-bg: #0f1114;
+  --card-bg: #1b1b29;
+  --text-color: #e4e6ef;
+  --text-muted: #8f8fb0;
+  --border-color: #2b2b40;
+  --border-color-2: #323248;
+  --input-bg: #23232f;
+
+  --sidebar-bg: #14141b;
+  --sidebar-bg-2: #101019;
+  --sidebar-text: #8f8fb0;
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+
+  --header-bg: #1b1b29;
+
+  --primary-light: rgba(0, 158, 247, 0.15);
+  --success-light: rgba(80, 205, 137, 0.14);
+  --warning-light: rgba(255, 199, 0, 0.14);
+  --danger-light: rgba(241, 65, 108, 0.14);
+  --info-light: rgba(114, 57, 234, 0.14);
+
+  --shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 0 10px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 0 50px 0 rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--app-bg);
+  color: var(--text-color);
+  font-size: 0.925rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===================== 栅格系统（12 列，对齐 Bootstrap） ===================== */
+.row {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+}
+/* 允许 grid 子项收缩，避免内容最小宽度把栅格撑爆导致框体被压扁 */
+.row > [class*='col-'] {
+  min-width: 0;
+}
+.col-12 {
+  grid-column: span 12;
+}
+.col-sm-6 {
+  grid-column: span 12;
+}
+.col-xl-2,
+.col-xl-4 {
+  grid-column: span 12;
+}
+.col-lg-5,
+.col-lg-7 {
+  grid-column: span 12;
+}
+@media (min-width: 576px) {
+  .col-sm-6 {
+    grid-column: span 6;
+  }
+}
+@media (min-width: 992px) {
+  .col-lg-5 {
+    grid-column: span 5;
+  }
+  .col-lg-7 {
+    grid-column: span 7;
+  }
+}
+@media (min-width: 1200px) {
+  .col-xl-2 {
+    grid-column: span 2;
+  }
+  .col-xl-4 {
+    grid-column: span 4;
+  }
+}
+
+/* ===================== 布局骨架 ===================== */
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: var(--sidebar-w);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  z-index: 1040;
+  transition: transform 0.3s ease;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
+}
+
+.brand {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 1.5rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+.brand .logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #009ef7, #7239ea);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  box-shadow: 0 3px 10px rgba(0, 158, 247, 0.4);
+}
+
+.sidebar-menu {
+  padding: 0.75rem 0.85rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.menu-section {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sidebar-text);
+  opacity: 0.5;
+  padding: 1.25rem 0.9rem 0.5rem;
+  font-weight: 600;
+}
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius);
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.menu-item:hover {
+  background: var(--sidebar-hover);
+  color: #fff;
+}
+/* 激活态：浅底色 + 左侧主色强调条（Metronic 风格） */
+.menu-item.active {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text-active);
+  font-weight: 600;
+}
+.menu-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary);
+}
+.menu-item .ico {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.menu-item .label {
+  flex: 1;
+}
+.menu-item .menu-badge {
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.7rem;
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+.app-main {
+  margin-left: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  height: var(--header-h);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+  z-index: 1030;
+}
+.app-content {
+  padding: 1.75rem 2rem;
+  flex: 1;
+}
+
+/* ===================== Header 内元素 ===================== */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  position: relative;
+}
+.icon-btn:hover {
+  background: var(--app-bg);
+  color: var(--text-color);
+}
+.icon-btn .notify-dot {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--header-bg);
+}
+.header-spacer {
+  flex: 1;
+}
+
+/* 全局搜索（Metronic Header 标配） */
+.header-search {
+  position: relative;
+  width: 260px;
+  max-width: 32vw;
+}
+.header-search .form-control {
+  padding-left: 2.4rem;
+  background: var(--app-bg);
+  border-color: transparent;
+  height: 40px;
+}
+.header-search .form-control:focus {
+  background: var(--card-bg);
+  border-color: var(--primary);
+}
+.header-search .search-ico {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.user-menu {
+  position: relative;
+}
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 30px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.user-trigger:hover {
+  background: var(--app-bg);
+}
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #009ef7, #7239ea);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.user-meta {
+  text-align: left;
+  line-height: 1.2;
+}
+.user-meta .name {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+.user-meta .role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dropdown-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 240px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  z-index: 1050;
+  animation: dd-in 0.15s ease;
+}
+@keyframes dd-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.dropdown-panel .dd-header {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+.dd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-color);
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.dd-item:hover {
+  background: var(--app-bg);
+}
+.dd-item.danger {
+  color: var(--danger);
+}
+
+/* ===================== 页面头部（面包屑 + 标题 + 工具栏） ===================== */
+.page-head {
+  margin-bottom: 1.5rem;
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+.breadcrumb a:hover {
+  color: var(--primary);
+}
+.breadcrumb .sep {
+  opacity: 0.5;
+}
+.breadcrumb .current {
+  color: var(--text-color);
+}
+.page-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-color);
+}
+.page-sub {
+  color: var(--text-muted);
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+}
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ===================== 卡片 ===================== */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-color);
+}
+.card-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.card-body {
+  padding: 1.5rem;
+}
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* ===================== 统计指标卡 ===================== */
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  height: 100%;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+.stat-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon svg {
+  width: 26px;
+  height: 26px;
+}
+.stat-icon.primary {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.stat-icon.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+.stat-icon.warning {
+  background: var(--warning-light);
+  color: #d9a300;
+}
+.stat-icon.info {
+  background: var(--info-light);
+  color: var(--info);
+}
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-color);
+}
+
+/* ===================== 表格（table-row-dashed 风格） ===================== */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text-color);
+}
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  background: var(--card-bg);
+}
+.table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px dashed var(--border-color);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr {
+  transition: background 0.15s;
+}
+.table tbody tr:hover {
+  background: var(--app-bg);
+}
+.table .empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 0;
+  font-size: 0.95rem;
+}
+
+/* ===================== 徽章（badge-light 风格） ===================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge.gray {
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--text-muted);
+}
+.badge.primary {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.badge.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+.badge.warning {
+  background: var(--warning-light);
+  color: #c79a00;
+}
+.badge.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+.badge.info {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+/* ===================== 按钮 ===================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn svg {
+  width: 17px;
+  height: 17px;
+}
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--primary-active);
+}
+.btn-success {
+  background: var(--success);
+  color: #fff;
+}
+.btn-success:hover {
+  background: #47be7d;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: #d9214b;
+}
+/* Metronic 风格的浅色/次要按钮 */
+.btn-light {
+  background: var(--app-bg);
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+.btn-light:hover {
+  background: var(--border-color);
+  color: var(--text-color);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color-2);
+  color: var(--text-color);
+}
+.btn-outline:hover {
+  background: var(--app-bg);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-sm {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.825rem;
+}
+
+/* ===================== 表单 ===================== */
+.form-control {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color-2);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.9rem;
+  height: 43px;
+  color: var(--text-color);
+  font-size: 0.925rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.25rem rgba(0, 158, 247, 0.15);
+}
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--text-color);
+}
+
+/* 带图标的搜索框 */
+.search-box {
+  position: relative;
+}
+.search-box .form-control {
+  padding-left: 2.4rem;
+}
+.search-box .search-ico {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ===================== 待办列表 ===================== */
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0.9rem 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+.todo-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.todo-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border-color-2);
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.todo-check.done {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+.todo-text {
+  flex: 1;
+}
+.todo-text.done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.todo-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ===================== 时钟 ===================== */
+.clock-card {
+  background: linear-gradient(135deg, #009ef7, #7239ea);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 8px 25px rgba(114, 57, 234, 0.35);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.clock-time {
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1.1;
+}
+.clock-date {
+  opacity: 0.9;
+  margin-top: 6px;
+  font-size: 0.95rem;
+}
+.clock-greet {
+  font-size: 1.05rem;
+  font-weight: 500;
+  opacity: 0.95;
+  text-align: right;
+  max-width: 320px;
+}
+
+/* ===================== 登录页（Metronic 双栏认证布局） ===================== */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+}
+.auth-aside {
+  flex: 1;
+  background: linear-gradient(135deg, #009ef7, #7239ea);
+  color: #fff;
+  padding: 3rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.auth-aside .brand-lg {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.auth-aside .logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+.auth-aside .aside-title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 1rem;
+}
+.auth-aside .aside-desc {
+  font-size: 1rem;
+  opacity: 0.9;
+  line-height: 1.7;
+  max-width: 420px;
+}
+.auth-aside .aside-feat {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.auth-aside .feat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+.auth-aside .feat-item .chk {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.auth-aside .aside-foot {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.auth-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--app-bg);
+}
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 2.5rem 2.25rem;
+}
+.login-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #009ef7, #7239ea);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.3rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 6px 18px rgba(114, 57, 234, 0.35);
+}
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+.login-sub {
+  color: var(--text-muted);
+  margin-bottom: 1.75rem;
+}
+.login-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--app-bg);
+  border: 1px dashed var(--border-color-2);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem;
+  margin-top: 1rem;
+  line-height: 1.6;
+}
+
+/* ===================== 工具类 ===================== */
+.mb-0 {
+  margin-bottom: 0;
+}
+.mb-3 {
+  margin-bottom: 1rem;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+.mt-3 {
+  margin-top: 1rem;
+}
+.mt-4 {
+  margin-top: 1.5rem;
+}
+.d-none {
+  display: none !important;
+}
+@media (min-width: 768px) {
+  .d-md-block {
+    display: block !important;
+  }
+}
+.d-flex {
+  display: flex;
+}
+.align-center {
+  align-items: center;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.gap-3 {
+  gap: 1rem;
+}
+.flex-1 {
+  flex: 1;
+}
+.text-right {
+  text-align: right;
+}
+.nowrap {
+  white-space: nowrap;
+}
+
+/* ===================== 响应式 ===================== */
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+  }
+  .app-shell.sidebar-open .app-sidebar {
+    transform: translateX(0);
+  }
+  .app-shell.sidebar-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1035;
+  }
+  .app-main {
+    margin-left: 0;
+  }
+  .hamburger {
+    display: inline-flex !important;
+  }
+  .auth-aside {
+    display: none;
+  }
+}
+.hamburger {
+  display: none;
+}
+@media (min-width: 992px) {
+  .app-shell.sidebar-open .app-sidebar {
+    transform: translateX(0);
+  }
+}

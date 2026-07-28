@@ -85,6 +85,10 @@ const sampleLetters = [
   { id:'L15', content:"致十年后的我：\n\n如果那时候你依然单身，请不要焦虑。\n\n28岁的我，一个人看电影，一个人吃火锅，一个人旅行。不是没人陪，是我享受独处。\n\n希望你依然拥有这份自在。也希望你遇到了那个让独处变得更美好的人——如果还没有，也没关系。", star:'gold', from:'一位自由人', avatar:'🌠', likes:1023 },
 ];
 
+/**
+ * 生成随机小行星编号，形如 "小行星 #2024-AB03"
+ * @returns {string} 小行星编号
+ */
 function generateAsteroidId() {
   const year = 2020 + Math.floor(Math.random() * 7);
   const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
@@ -96,12 +100,22 @@ function generateAsteroidId() {
 
 sampleLetters.forEach(l => { if (!l.asteroid) l.asteroid = generateAsteroidId(); });
 
+/**
+ * 根据点赞数计算信号等级
+ * @param {number} likes - 点赞数
+ * @returns {number} 信号等级：>=1000 为 2，>=100 为 1，否则 0
+ */
 function getSignalTier(likes) {
   if (likes >= 1000) return 2;
   if (likes >= 100) return 1;
   return 0;
 }
 
+/**
+ * 根据点赞数返回加权抽样的权重
+ * @param {number} likes - 点赞数
+ * @returns {number} 权重（tier2=5, tier1=3, 否则 1）
+ */
 function getSignalWeight(likes) {
   const tier = getSignalTier(likes);
   if (tier === 2) return 5;
@@ -109,6 +123,11 @@ function getSignalWeight(likes) {
   return 1;
 }
 
+/**
+ * 按点赞权重从样本信中抽取 count 封不重复信件
+ * @param {number} count - 抽取数量
+ * @returns {Array<object>} 抽取到的信件数组
+ */
 function pickWeightedLetters(count) {
   const pool = sampleLetters.map(l => ({ letter: l, weight: getSignalWeight(l.likes) }));
   const picked = [];
@@ -127,6 +146,11 @@ function pickWeightedLetters(count) {
   return picked;
 }
 
+/**
+ * 格式化日期为 YYYY.MM.DD
+ * @param {Date} d - 日期对象
+ * @returns {string} 格式化后的日期字符串
+ */
 function formatDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -134,6 +158,11 @@ function formatDate(d) {
   return `${y}.${m}.${day}`;
 }
 
+/**
+ * 将点赞数格式化为带 w/k 单位的简写
+ * @param {number} n - 点赞数
+ * @returns {string} 格式化后的字符串
+ */
 function formatLikeCount(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
@@ -141,6 +170,10 @@ function formatLikeCount(n) {
 }
 
 export default {
+  /**
+   * 组件的响应式数据。
+   * @returns {object} 包含星图、刷新状态及信件详情弹窗数据的数据对象
+   */
   data() {
     return {
       currentStars: [],
@@ -159,10 +192,16 @@ export default {
       currentModalLetter: null,
     };
   },
+  /**
+   * 组件挂载后生成初始星图
+   */
   mounted() {
     this.generateStarLetters();
   },
   methods: {
+    /**
+     * 根据样本信生成星星在星图中的随机布局
+     */
     generateStarLetters() {
       const sysInfo = uni.getSystemInfoSync();
       const skyW = sysInfo.windowWidth;
@@ -210,6 +249,9 @@ export default {
 
       this.currentStars = stars;
     },
+    /**
+     * 刷新星图：触发 loading 动画后重新生成星星布局
+     */
     refreshStars() {
       this.isRefreshing = true;
       setTimeout(() => {
@@ -217,6 +259,10 @@ export default {
         this.generateStarLetters();
       }, 600);
     },
+    /**
+     * 打开信件详情弹窗并填充数据
+     * @param {object} letter - 选中的信件对象
+     */
     showLetterModal(letter) {
       this.currentModalLetter = letter;
       const app = getApp();
@@ -249,9 +295,15 @@ export default {
       this.isModalLit = likedSet.has(letter.id);
       this.showModal = true;
     },
+    /**
+     * 关闭信件详情弹窗
+     */
     closeModal() {
       this.showModal = false;
     },
+    /**
+     * 切换当前信件的"点亮"状态并持久化
+     */
     toggleLight() {
       if (!this.currentModalLetter) return;
       const app = getApp();

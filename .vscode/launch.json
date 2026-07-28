@@ -1,15 +1,32 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "chrome",
+            "name": "Debug Nest (ts-node)",
+            "type": "node",
             "request": "launch",
-            "name": "针对 localhost 启动 Chrome",
-            "url": "http://localhost:8080",
-            "webRoot": "${workspaceFolder}"
+            "runtimeArgs": [
+                "--nolazy",
+                "-r",
+                "ts-node/register",
+                "-r",
+                "tsconfig-paths/register"
+            ],
+            "args": [
+                "src/main.ts"
+            ],
+            "cwd": "${workspaceFolder}/send-to-future-nest",
+            "env": {
+                "NODE_ENV": "development",
+                "TS_NODE_PROJECT": "tsconfig.json"
+            },
+            "sourceMaps": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "protocol": "inspector",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/send-to-future-nest/**"
+            ]
         }
     ]
 }

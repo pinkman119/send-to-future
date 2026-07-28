@@ -15,6 +15,11 @@ app.$mount()
 import {
 	createSSRApp
 } from 'vue'
+
+/**
+ * 创建 Vue3 SSR 应用实例
+ * @returns {object} 包含 app 实例的对象
+ */
 export function createApp() {
 	const app = createSSRApp(App)
 	return {

@@ -7,6 +7,9 @@
 			likedLetterIds: new Set(),
 			myCoords: [],
 			login: null,
+			/**
+			 * 将 globalData 中的写信记录、点赞集合、坐标持久化到本地存储
+			 */
 			saveState() {
 				try {
 					const app = getApp();
@@ -16,6 +19,9 @@
 				} catch(e) {}
 			}
 		},
+		/**
+		 * 应用启动：恢复本地缓存的写信/点赞/坐标数据，并后台静默登录（不阻塞首屏）
+		 */
 		onLaunch: function() {
 			console.log('App Launch');
 			try {
@@ -32,9 +38,15 @@
 				console.warn('静默登录失败（不影响正常使用）', e);
 			});
 		},
+		/**
+		 * 应用切到前台时触发
+		 */
 		onShow: function() {
 			console.log('App Show');
 		},
+		/**
+		 * 应用切到后台时触发
+		 */
 		onHide: function() {
 			console.log('App Hide');
 		}

@@ -31,6 +31,11 @@ export class AiService {
     ]);
   }
 
+  /**
+   * 调用大模型生成文本
+   * @param input - 用户输入的提示内容
+   * @returns 生成的文本字符串
+   */
   async generateText(input: string): Promise<string> {
     const chain = this.prompt.pipe(this.model);
     const response = await chain.invoke({ input });

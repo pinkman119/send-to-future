@@ -133,6 +133,10 @@ const sampleLetters = [
   { id:'L15', content:"致十年后的我：\n\n如果那时候你依然单身，请不要焦虑。\n\n28岁的我，一个人看电影，一个人吃火锅，一个人旅行。不是没人陪，是我享受独处。\n\n希望你依然拥有这份自在。也希望你遇到了那个让独处变得更美好的人——如果还没有，也没关系。", star:'gold', from:'一位自由人', avatar:'🌠', likes:1023 },
 ];
 
+/**
+ * 生成随机的小行星编号（年份 + 双字母 + 两位数字）。
+ * @returns {string} 形如「小行星 #2023-AB07」的编号
+ */
 function generateAsteroidId() {
   const year = 2020 + Math.floor(Math.random() * 7);
   const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
@@ -157,12 +161,22 @@ const constellationDescs = [
   '此刻与未来之间的星桥',
 ];
 
+/**
+ * 根据点赞数判断信号强度等级。
+ * @param {number} likes - 信件的点赞数
+ * @returns {number} 等级：0=无信号，1=微弱信号，2=强烈信号
+ */
 function getSignalTier(likes) {
   if (likes >= 1000) return 2;
   if (likes >= 100) return 1;
   return 0;
 }
 
+/**
+ * 根据信号等级返回加权采样权重（等级越高越容易被选中）。
+ * @param {number} likes - 信件的点赞数
+ * @returns {number} 采样权重
+ */
 function getSignalWeight(likes) {
   const tier = getSignalTier(likes);
   if (tier === 2) return 5;
@@ -170,6 +184,11 @@ function getSignalWeight(likes) {
   return 1;
 }
 
+/**
+ * 按信号权重随机抽取指定数量的信件（不重复）。
+ * @param {number} count - 需要抽取的信件数量
+ * @returns {Array<object>} 抽取出的信件数组
+ */
 function pickWeightedLetters(count) {
   const pool = sampleLetters.map(l => ({ letter: l, weight: getSignalWeight(l.likes) }));
   const picked = [];
@@ -188,6 +207,11 @@ function pickWeightedLetters(count) {
   return picked;
 }
 
+/**
+ * 将日期格式化为「年.月.日」字符串。
+ * @param {Date} d - 需要格式化的日期对象
+ * @returns {string} 形如「2026.07.25」的日期字符串
+ */
 function formatDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -195,6 +219,11 @@ function formatDate(d) {
   return `${y}.${m}.${day}`;
 }
 
+/**
+ * 将点赞数格式化为带单位（w/k）的短字符串。
+ * @param {number} n - 原始点赞数
+ * @returns {string} 压缩显示后的点赞数
+ */
 function formatLikeCount(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
@@ -204,6 +233,11 @@ function formatLikeCount(n) {
 // ===== 固定星系：在模块加载时一次性生成，滑动不会重新随机 =====
 const GALAXY_COUNT = 6;
 
+/**
+ * 根据星星坐标计算星座连线：先做最小生成树（MST），再补充若干近邻连线。
+ * @param {Array<object>} positions - 星星的归一化坐标数组，每项含 x、y
+ * @returns {Array<object>} 连线数组，每项含 x1、y1、length、angle、isMST、delay
+ */
 function computeLines(positions) {
   const n = positions.length;
   const lines = [];
@@ -269,6 +303,10 @@ function computeLines(positions) {
   return lines;
 }
 
+/**
+ * 一次性生成固定数量的星系，每个星系由加权抽取的信件及其坐标、连线组成。
+ * @returns {Array<object>} 星系数组，每项含 name、desc、stars
+ */
 function generateGalaxies() {
   const galaxies = [];
   for (let g = 0; g < GALAXY_COUNT; g++) {
@@ -318,6 +356,10 @@ function generateGalaxies() {
 const GALAXIES = generateGalaxies();
 
 export default {
+  /**
+   * 组件的响应式数据。
+   * @returns {object} 包含星系、渲染结果、滑动手势及弹窗状态的数据对象
+   */
   data() {
     return {
       galaxies: GALAXIES,
@@ -348,35 +390,56 @@ export default {
     };
   },
   computed: {
+    /**
+     * 根据当前星系索引与拖动偏移计算轨道水平位移样式。
+     * @returns {object} 含 transform 的样式对象
+     */
     trackStyle() {
       const x = -this.galaxyIndex * this.trackWidth + this.dragX;
       return { transform: `translateX(${x}px)` };
     },
   },
+  /**
+   * 组件挂载后：同步已收听列表、首次渲染星系并监听调色板变化。
+   */
   mounted() {
     this.syncListened();
     this.renderAll();
     uni.$on('palette-change', this.onPaletteChange);
   },
+  /**
+   * 页面显示时：从地球页返回后按最新星球颜色重绘星系。
+   */
   onShow() {
     // 从地球页返回时，按最新星球颜色重绘星系
     this.renderAll();
   },
+  /**
+   * 页面卸载时：移除调色板变化监听，避免内存泄漏。
+   */
   onUnload() {
     uni.$off('palette-change', this.onPaletteChange);
   },
+  /**
+   * 窗口尺寸变化时：重新渲染星系以适配新尺寸。
+   */
   onResize() {
     this.renderAll();
   },
   methods: {
-    // 读取「地球-我的星球-星球颜色」当前调色板（每次实时读取，避免 computed 缓存旧值）
+    /**
+     * 读取「地球-我的星球-星球颜色」当前调色板（每次实时读取，避免 computed 缓存旧值）。
+     * @returns {Array<string>} 调色板颜色数组
+     */
     getGalaxyPalette() {
       const app = getApp();
       const pals = (app.globalData && app.globalData.satPalettes) || [];
       const idx = (typeof app.globalData.satPalette === 'number') ? app.globalData.satPalette : 0;
       return (pals[idx] && pals[idx].colors) || ['#00e5ff', '#a855f7', '#4facfe', '#ff6b9d', '#4ade80'];
     },
-    // 把归一化坐标映射到当前屏幕尺寸，并计算每个星系的连线
+    /**
+     * 把归一化坐标映射到当前屏幕尺寸，并计算每个星系的连线后渲染到页面。
+     */
     renderAll() {
       const sysInfo = uni.getSystemInfoSync();
       const skyW = sysInfo.windowWidth;
@@ -420,22 +483,40 @@ export default {
           .exec();
       });
     },
+    /**
+     * 从触摸事件中提取首个触摸点的横坐标。
+     * @param {object} e - 触摸事件对象
+     * @returns {number} 触摸点横坐标
+     */
     getTouchX(e) {
       const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
       if (!t) return 0;
       return typeof t.clientX === 'number' ? t.clientX : (t.pageX || 0);
     },
+    /**
+     * 从触摸事件中提取首个触摸点的纵坐标。
+     * @param {object} e - 触摸事件对象
+     * @returns {number} 触摸点纵坐标
+     */
     getTouchY(e) {
       const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
       if (!t) return 0;
       return typeof t.clientY === 'number' ? t.clientY : (t.pageY || 0);
     },
+    /**
+     * 触摸开始：记录起始坐标并初始化拖动状态。
+     * @param {object} e - 触摸事件对象
+     */
     onTouchStart(e) {
       this.startX = this.getTouchX(e);
       this.startY = this.getTouchY(e);
       this.dragging = true;
       this.lockDir = '';
     },
+    /**
+     * 触摸移动：根据移动距离锁定方向并更新水平拖动偏移。
+     * @param {object} e - 触摸事件对象
+     */
     onTouchMove(e) {
       if (!this.dragging) return;
       const dx = this.getTouchX(e) - this.startX;
@@ -447,6 +528,10 @@ export default {
         this.dragX = dx;
       }
     },
+    /**
+     * 触摸结束：根据水平位移决定是否切换星系。
+     * @param {object} e - 触摸事件对象
+     */
     onTouchEnd(e) {
       if (!this.dragging) return;
       this.dragging = false;
@@ -462,13 +547,23 @@ export default {
         }
       }
     },
+    /**
+     * 切换到指定索引的星系。
+     * @param {number} gi - 目标星系索引
+     */
     goGalaxy(gi) {
       if (gi === this.galaxyIndex) return;
       this.galaxyIndex = gi;
     },
+    /**
+     * 调色板变化时：重新渲染星系。
+     */
     onPaletteChange() {
       this.renderAll();
     },
+    /**
+     * 刷新星海：生成一组全新的、与当前不重复的星系。
+     */
     refreshStars() {
       this.isRefreshing = true;
       setTimeout(() => {
@@ -482,14 +577,21 @@ export default {
         uni.showToast({ title: '已生成新的星海 ✨', icon: 'none', duration: 1500 });
       }, 600);
     },
-    // 计算一个星系组的唯一签名（用于避免重复）
+    /**
+     * 计算一个星系组的唯一签名（用于避免重复）。
+     * @param {Array<object>} set - 星系组
+     * @returns {string} 由信件 id 组合而成的签名串
+     */
     galaxySignature(set) {
       return set
         .map(g => g.stars.map(s => s.letter.id).sort().join(','))
         .sort()
         .join('|');
     },
-    // 生成与当前组不重复的全新星系组（最多重试 30 次）
+    /**
+     * 生成与当前组不重复的全新星系组（最多重试 30 次）。
+     * @returns {Array<object>} 全新的星系数组
+     */
     generateNonRepeatingGalaxies() {
       const prevSig = this.galaxySignature(this.galaxies);
       let newSet;
@@ -500,6 +602,10 @@ export default {
       } while (tries < 30 && this.galaxySignature(newSet) === prevSig);
       return newSet;
     },
+    /**
+     * 打开信件详情弹窗，填充头像、信号、内容、点赞等数据。
+     * @param {object} letter - 被点击的信件对象
+     */
     showLetterModal(letter) {
       if (this.justSwiped) return;
       this.currentModalLetter = letter;
@@ -535,9 +641,15 @@ export default {
       this.isModalSubscribed = subs.some(s => s.letterId === letter.id);
       this.showModal = true;
     },
+    /**
+     * 关闭信件详情弹窗。
+     */
     closeModal() {
       this.showModal = false;
     },
+    /**
+     * 切换当前信件的「点亮」状态，并同步到全局点亮记录。
+     */
     toggleLight() {
       if (!this.currentModalLetter) return;
       const app = getApp();
@@ -564,6 +676,9 @@ export default {
         app.globalData.saveState();
       }
     },
+    /**
+     * 切换「收听此人」状态：订阅时写入收件箱并增加收听计数。
+     */
     toggleSubscribe() {
       if (!this.currentModalLetter) return;
       const app = getApp();
@@ -609,7 +724,9 @@ export default {
         uni.showToast({ title: '已取消收听', icon: 'none', duration: 1500 });
       }
     },
-    // 同步“我收听过的”信件 id 列表，用于星系中金色高亮
+    /**
+     * 同步“我收听过的”信件 id 列表，用于星系中金色高亮。
+     */
     syncListened() {
       const app = getApp();
       const subs = (app.globalData.mySubscriptions || []) ;

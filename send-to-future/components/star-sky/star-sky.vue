@@ -34,6 +34,15 @@
 </template>
 
 <script>
+/**
+ * 生成用 box-shadow 模拟星空的多层星点样式字符串
+ * @param {number} count - 星点数量
+ * @param {number} w - 画布宽度
+ * @param {number} h - 画布高度
+ * @param {Function} colorFn - 返回单颗星颜色（rgba 字符串）的函数
+ * @param {number} blur - 星点模糊半径
+ * @returns {string} box-shadow 样式字符串
+ */
 function buildStars(count, w, h, colorFn, blur) {
   const parts = [];
   for (let i = 0; i < count; i++) {
@@ -44,6 +53,11 @@ function buildStars(count, w, h, colorFn, blur) {
   return 'box-shadow:' + parts.join(',') + ';';
 }
 
+/**
+ * 将十六进制颜色字符串转为 [r, g, b] 数组
+ * @param {string} hex - 形如 #rrggbb 或 #rgb 的颜色
+ * @returns {Array<number>} RGB 数值数组
+ */
 function hexToRgb(hex) {
   let h = (hex || '').replace('#', '');
   if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
@@ -52,7 +66,10 @@ function hexToRgb(hex) {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-// 读取「我的星球」中选择的星球颜色（调色板），返回 hex 数组
+/**
+ * 读取「我的星球」中选择的星球颜色（调色板），返回 hex 数组
+ * @returns {Array<string>} 调色板颜色 hex 数组
+ */
 function getPaletteHex() {
   let palette = null;
   try {
@@ -67,7 +84,10 @@ function getPaletteHex() {
   return palette;
 }
 
-// 星空着色用的 rgb 字符串数组，如 "0,229,255"
+/**
+ * 星空着色用的 rgb 字符串数组，如 "0,229,255"
+ * @returns {Array<string>} 调色板颜色 rgb 字符串数组
+ */
 function getPaletteRgb() {
   return getPaletteHex().map(hexToRgb).map(function (c) { return c.join(','); });
 }
@@ -105,6 +125,9 @@ export default {
       currentMessage: '',
     };
   },
+  /**
+   * 组件挂载后初始化屏幕尺寸、构建星空图层并启动流星循环
+   */
   mounted() {
     try {
       const sys = uni.getSystemInfoSync();
@@ -118,11 +141,17 @@ export default {
     this.startLoop();
     uni.$on('palette-change', this.buildLayers);
   },
+  /**
+   * 组件销毁前清除定时器并移除事件监听
+   */
   beforeDestroy() {
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
     uni.$off('palette-change', this.buildLayers);
   },
   methods: {
+    /**
+     * 根据屏幕尺寸与调色板构建三层星空星点
+     */
     buildLayers() {
       const w = this.screenW;
       const h = this.screenH;
@@ -145,7 +174,9 @@ export default {
       }, 2);
       this.buildSkyBg();
     },
-    // 星云背景光晕跟随所选星球颜色变化，使配色切换一目了然
+    /**
+     * 星云背景光晕跟随所选星球颜色变化，使配色切换一目了然
+     */
     buildSkyBg() {
       const hex = getPaletteHex();
       const c0 = hexToRgb(hex[0]);
@@ -158,6 +189,9 @@ export default {
         'radial-gradient(ellipse 55% 45% at 84% 86%, ' + rgba(c1, 0.18) + ', transparent 60%),' +
         'radial-gradient(ellipse 40% 32% at 76% 22%, ' + rgba(c2, 0.12) + ', transparent 60%);';
     },
+    /**
+     * 启动流星生成循环
+     */
     startLoop() {
       const tick = () => {
         this.spawnMeteor();
@@ -168,6 +202,9 @@ export default {
       };
       this.timer = setTimeout(tick, 1500 + Math.random() * 2500);
     },
+    /**
+     * 生成一颗随机方向的流星并记录其生命周期
+     */
     spawnMeteor() {
       const w = this.screenW;
       const h = this.screenH;
@@ -201,12 +238,17 @@ export default {
         self.meteors = self.meteors.filter(function (m) { return m.id !== id; });
       }, lifetime);
     },
+    /**
+     * 点击流星时随机展示一条星海留言弹窗
+     */
     onMeteorTap() {
       const idx = Math.floor(Math.random() * sampleMessages.length);
       this.currentMessage = sampleMessages[idx];
       this.showMessage = true;
     },
-    // 「收下这份温柔」：将当前小行星收入图鉴（按编号去重），记录捕获时间
+    /**
+     * 「收下这份温柔」：将当前小行星收入图鉴（按编号去重），记录捕获时间
+     */
     captureMessage() {
       const msg = this.currentMessage;
       if (msg && typeof msg === 'object') {
@@ -231,6 +273,9 @@ export default {
       }
       this.showMessage = false;
     },
+    /**
+     * 关闭流星留言弹窗
+     */
     closeMessage() {
       this.showMessage = false;
     },

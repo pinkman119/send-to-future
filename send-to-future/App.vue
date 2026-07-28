@@ -132,20 +132,32 @@
 				{ name: '暖阳', colors: ['#ffd56b', '#ff9f43', '#ff6b9d', '#ff5e62', '#ffc371'] },
 				{ name: '梦幻', colors: ['#ff6b9d', '#c084fc', '#f472b6', '#a855f7', '#fb7185'] },
 			],
+		/**
+		 * 持久化 globalData（本地存储已移除，数据仅存内存；后续接入后端时改为写入/更新接口）
+		 */
 		saveState() {
 			// 本地存储已移除：数据仅保留在内存（静态/默认值），刷新或重进将重置为默认值。
 			// 后续接入后端时，将各页面的 saveState() 调用替换为对应的写入/更新接口请求。
 		}
 		},
+		/**
+		 * 应用启动：设置默认星球图片（本地存储读取已移除，数据统一用静态默认值）
+		 */
 		onLaunch: function() {
 			console.log('App Launch');
 			this.globalData.myPlanetImg = DEFAULT_PLANET_IMG;
 			// 已移除本地存储读取：当前数据统一使用 globalData 中的静态默认值（仅存在于内存）。
 			// 后续接入后端时，在此处调用接口拉取用户动态数据并赋值给 globalData 即可。
 		},
+		/**
+		 * 应用切到前台时触发
+		 */
 		onShow: function() {
 			console.log('App Show');
 		},
+		/**
+		 * 应用切到后台时触发
+		 */
 		onHide: function() {
 			console.log('App Hide');
 		}

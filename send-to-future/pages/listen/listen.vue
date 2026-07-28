@@ -194,6 +194,10 @@ const sampleLetters = [
   { id:'L15', content:"致十年后的我：\n\n如果那时候你依然单身，请不要焦虑。\n\n28岁的我，一个人看电影，一个人吃火锅，一个人旅行。不是没人陪，是我享受独处。\n\n希望你依然拥有这份自在。也希望你遇到了那个让独处变得更美好的人——如果还没有，也没关系。", star:'gold', from:'一位自由人', avatar:'🌠', likes:1023 },
 ];
 
+/**
+ * 生成随机小行星编号，形如 "小行星 #2024-AB03"
+ * @returns {string} 小行星编号
+ */
 function generateAsteroidId() {
   const year = 2020 + Math.floor(Math.random() * 7);
   const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
@@ -203,18 +207,33 @@ function generateAsteroidId() {
   return `小行星 #${year}-${l1}${l2}${num}`;
 }
 
+/**
+ * 根据点赞数计算信号等级
+ * @param {number} likes - 点赞数
+ * @returns {number} 信号等级：>=1000 为 2，>=100 为 1，否则 0
+ */
 function getSignalTier(likes) {
   if (likes >= 1000) return 2;
   if (likes >= 100) return 1;
   return 0;
 }
 
+/**
+ * 将点赞数格式化为带 w/k 单位的简写
+ * @param {number} n - 点赞数
+ * @returns {string} 格式化后的字符串
+ */
 function formatLikeCount(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
   return String(n);
 }
 
+/**
+ * 格式化日期为 YYYY.MM.DD
+ * @param {Date} d - 日期对象
+ * @returns {string} 格式化后的日期字符串
+ */
 function formatDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -222,6 +241,11 @@ function formatDate(d) {
   return `${y}.${m}.${day}`;
 }
 
+/**
+ * 格式化日期时间为 "YYYY.MM.DD HH:mm"
+ * @param {number} ts - 时间戳（毫秒）
+ * @returns {string} 格式化后的日期时间字符串
+ */
 function formatDateTime(ts) {
   const d = new Date(ts);
   if (isNaN(d.getTime())) return '';
@@ -232,6 +256,11 @@ function formatDateTime(ts) {
 
 // 将文本打乱成“乱码”信号，空格/换行保留以维持结构感
 const garblePool = '█▓▒░✦✧⚡☄★☆♺♻⍰⍾⧫⬡◈⟁⌗▦▩⍢⍣⍤⍥⍨◇◆▢▣§¶†‡';
+/**
+ * 将文本打乱成“乱码”信号（空格/换行保留以维持结构感）
+ * @param {string} text - 原始文本
+ * @returns {string} 乱码化后的文本
+ */
 function garble(text) {
   if (!text) return '';
   let out = '';
@@ -244,6 +273,10 @@ function garble(text) {
 }
 
 export default {
+  /**
+   * 返回「收听」页的初始数据
+   * @returns {object} 包含弹窗、列表与信件详情等状态的初始数据
+   */
   data() {
     return {
       subscriptions: [],
@@ -267,43 +300,82 @@ export default {
     };
   },
   computed: {
+    /**
+     * 我收听的人数
+     * @returns {number} 收听数
+     */
     subscribedCount() {
       return this.subscriptions.length;
     },
+    /**
+     * 我点亮的星数量
+     * @returns {number} 点亮数
+     */
     litCount() {
       const app = getApp();
       const liked = app.globalData.likedLetterIds || new Set();
       return liked.size;
     },
+    /**
+     * 已捕获的小行星数量
+     * @returns {number} 图鉴数量
+     */
     capturedCount() {
       return this.capturedAsteroids.length;
     },
   },
+  /**
+   * 组件挂载后渲染页面数据
+   */
   mounted() {
     this.renderPage();
   },
+  /**
+   * 页面显示时重新渲染页面数据
+   */
   onShow() {
     this.renderPage();
   },
   methods: {
+    /**
+     * 打开小行星图鉴弹窗
+     */
     openAtlas() {
       this.showAtlas = true;
     },
+    /**
+     * 关闭小行星图鉴弹窗
+     */
     closeAtlas() {
       this.showAtlas = false;
     },
+    /**
+     * 打开「我收听的人」弹窗
+     */
     openSubs() {
       this.showSubs = true;
     },
+    /**
+     * 关闭「我收听的人」弹窗
+     */
     closeSubs() {
       this.showSubs = false;
     },
+    /**
+     * 打开「我点亮的星」弹窗
+     */
     openLit() {
       this.showLit = true;
     },
+    /**
+     * 关闭「我点亮的星」弹窗
+     */
     closeLit() {
       this.showLit = false;
     },
+    /**
+     * 渲染页面：填充图鉴、收听列表与点亮列表（未读信件以乱码呈现）
+     */
     renderPage() {
       const app = getApp();
       const subs = app.globalData.mySubscriptions || [];
@@ -367,6 +439,10 @@ export default {
         })
         .filter(Boolean);
     },
+    /**
+     * 打开信件详情弹窗并填充数据
+     * @param {object} letter - 选中的信件对象
+     */
     showLetterModal(letter) {
       const app = getApp();
       const likedSet = app.globalData.likedLetterIds || new Set();
@@ -399,9 +475,15 @@ export default {
       this.isModalLit = likedSet.has(letter.id);
       this.showModal = true;
     },
+    /**
+     * 关闭信件详情弹窗
+     */
     closeModal() {
       this.showModal = false;
     },
+    /**
+     * 切换当前信件的"点亮"状态并持久化
+     */
     toggleLight() {
       if (!this.currentModalLetter) return;
       const app = getApp();
@@ -428,6 +510,10 @@ export default {
         app.globalData.saveState();
       }
     },
+    /**
+     * 点击收听项：首次点击标记为已读后打开对应信件
+     * @param {object} sub - 收听项
+     */
     openLetterBySub(sub) {
       // 第一次点击：把信件“正过来”（标记为已查看），之后不再处于反转状态
       if (sub.viewed !== undefined && sub.viewed !== true) {
@@ -443,6 +529,10 @@ export default {
       const letter = sampleLetters.find(l => l.id === sub.letterId);
       if (letter) this.showLetterModal(letter);
     },
+    /**
+     * 取消收听某项并刷新页面
+     * @param {string} subId - 收听项 id
+     */
     unsubscribe(subId) {
       const app = getApp();
       app.globalData.mySubscriptions = (app.globalData.mySubscriptions || []).filter(s => s.id !== subId);

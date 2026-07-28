@@ -36,6 +36,8 @@ model User {
   lights              Light[]
   decodedLetters      LetterDecode[]
   messageBoxes        MessageBox[]
+  letterDrafts        LetterDraft[]
+  orders              Order[]
 
   @@map("user")
 }
@@ -53,7 +55,7 @@ model Letter {
   sent_time     DateTime  @db.Timestamp()
   deliver_time  DateTime? @db.Timestamp()
   years_offset  Int?      @db.Integer()
-  status        Int       @default(0) @db.SmallInt()
+  status        Int       @default(0) @db.SmallInt() // 0=审核中 / 1=旅行中 / 2=已送达 / 3=审核驳回
   create_time   DateTime  @default(now()) @db.Timestamp()
   delete_time   DateTime? @db.Timestamp()
   decode        String?   @db.VarChar(20)
@@ -62,6 +64,8 @@ model Letter {
   lights              Light[]
   decoded             LetterDecode[]
   messageBoxes        MessageBox[]
+  contact             LetterContact?
+  order               Order?
 
   @@map("letter")
 }
@@ -197,4 +201,73 @@ model MessageBox {
   letter    Letter @relation(fields: [letter_id], references: [letter_id])
 
   @@map("message_box")
+}
+
+// ===== 发射草稿箱：每用户一份，发射成功后删除 =====
+model LetterDraft {
+  draft_id        BigInt    @id @default(autoincrement()) @db.BigInt()
+  user_id         BigInt    @db.BigInt() @unique
+  user            User      @relation(fields: [user_id], references: [user_id])
+  mode            Int?      @db.SmallInt()
+  content         String?   @db.Text()
+  keyword         String?   @db.VarChar(20)
+  channel_code    String?   @db.VarChar(16)
+  is_public       Boolean?  @default(true)
+  selected_years  Int?
+  custom_date     DateTime? @db.Timestamp()
+  from_name       String?   @db.VarChar(64)
+  to_name         String?   @db.VarChar(64)
+  contact_phone   String?   @db.VarChar(32)
+  contact_email   String?   @db.VarChar(64)
+  contact_address String?   @db.VarChar(255)
+  extra_contacts  Json?
+  update_time     DateTime  @default(now()) @db.Timestamp()
+
+  @@map("letter_draft")
+}
+
+// ===== 信件联络信息：每封信一条，结构化存储便于投递与校验 =====
+model LetterContact {
+  contact_id     BigInt    @id @default(autoincrement()) @db.BigInt()
+  letter_id      BigInt    @db.BigInt() @unique
+  letter         Letter    @relation(fields: [letter_id], references: [letter_id])
+  phone          String?   @db.VarChar(32)
+  email          String?   @db.VarChar(64)
+  address        String?   @db.VarChar(255)
+  extra_contacts Json?
+  create_time    DateTime  @default(now()) @db.Timestamp()
+
+  @@map("letter_contact")
+}
+
+// ===== 微信支付订单：与信件一对一，承接微信支付「发起→结束」全链路信息，字段对齐微信支付 V3 接口返回值 =====
+model Order {
+  order_id       BigInt    @id @default(autoincrement()) @db.BigInt()
+  user_id        BigInt    @db.BigInt()
+  user           User      @relation(fields: [user_id], references: [user_id])
+  letter_id      BigInt    @db.BigInt() @unique   // 一对一信件：每封信仅对应一笔支付订单
+  letter         Letter    @relation(fields: [letter_id], references: [letter_id])
+  channel_code   String    @db.VarChar(16)        // 渠道编码（mail/sms/unbreakable）
+  amount         Decimal   @db.Decimal(10, 2)     // 订单金额（元），与微信 amount.total 对齐
+  // —— 下单阶段写入（微信支付「统一下单」入参/出参）——
+  out_trade_no   String    @unique @db.VarChar(64) // 商户订单号，幂等键
+  prepay_id      String?   @db.VarChar(64)         // 预支付交易会话标识（JSAPI）
+  // —— 支付结果回调/查询阶段写入（对齐微信支付 V3 交易查询/回调返回值）——
+  transaction_id String?   @db.VarChar(64)         // 微信支付订单号
+  trade_type     String?   @db.VarChar(16)         // 交易类型，如 JSAPI
+  trade_state    String?   @db.VarChar(32)         // 微信支付交易状态：SUCCESS / CLOSED / PAYERROR ...
+  trade_state_desc String? @db.VarChar(255)        // 交易状态描述
+  bank_type      String?   @db.VarChar(32)         // 银行类型，如 CMB_CREDIT
+  payer_openid   String?   @db.VarChar(64)         // 支付者 openid
+  currency       String?   @db.VarChar(8)          // 标价币种，如 CNY
+  payer_total    Int?      @db.Integer()           // 现金支付金额（分），与 amount 等值
+  success_time   DateTime? @db.Timestamp()         // 支付完成时间（微信 success_time）
+  attach         String?   @db.VarChar(255)         // 附加数据
+  wx_raw         Json?                              // 微信回调/查询原始报文（审计用）
+  // —— 本地状态 ——
+  status         Int       @default(0) @db.SmallInt() // 0=待支付 1=支付成功 2=已关闭/已退款
+  create_time    DateTime  @default(now()) @db.Timestamp()
+  update_time    DateTime  @updatedAt @db.Timestamp()
+
+  @@map("order")
 }

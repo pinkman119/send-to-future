@@ -1,6 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
+/**
+ * 启动 Nest 应用：创建实例、开启 CORS、监听端口
+ */
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     app.enableCors();
