@@ -2,31 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Nest (ts-node)",
             "type": "node",
             "request": "launch",
+            "name": "Debug NestJS",
+            "runtimeExecutable": "npm",
             "runtimeArgs": [
-                "--nolazy",
-                "-r",
-                "ts-node/register",
-                "-r",
-                "tsconfig-paths/register"
+                "run",
+                "start:debug"
             ],
-            "args": [
-                "src/main.ts"
-            ],
-            "cwd": "${workspaceFolder}/send-to-future-nest",
-            "env": {
-                "NODE_ENV": "development",
-                "TS_NODE_PROJECT": "tsconfig.json"
-            },
-            "sourceMaps": true,
             "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "protocol": "inspector",
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/send-to-future-nest/**"
-            ]
+            "port": 3000
         }
     ]
 }

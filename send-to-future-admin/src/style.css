@@ -1,0 +1,348 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* ============ 滚动条 ============ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(126, 130, 153, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(126, 130, 153, 0.5);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 181, 0.2);
+}
+
+/* ============ 内容区过渡 ============ */
+.page-content {
+  animation: pageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ 菜单项 ============ */
+.nav-item {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(0, 158, 247, 0.12), rgba(0, 158, 247, 0.06));
+  color: #009ef7;
+}
+.nav-item.active .nav-icon {
+  color: #009ef7;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #009ef7;
+  border-radius: 0 3px 3px 0;
+}
+.dark .nav-item.active {
+  background: linear-gradient(135deg, rgba(0, 158, 247, 0.18), rgba(0, 158, 247, 0.08));
+}
+
+/* ============ 表格行 hover ============ */
+.data-row {
+  transition: background-color 0.12s ease;
+}
+.data-row:hover {
+  background-color: rgba(0, 158, 247, 0.03);
+}
+.dark .data-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+.data-row.selected {
+  background-color: rgba(0, 158, 247, 0.06);
+}
+.dark .data-row.selected {
+  background-color: rgba(0, 158, 247, 0.12);
+}
+
+/* ============ 自定义 checkbox ============ */
+input[type='checkbox'].cb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+.dark input[type='checkbox'].cb {
+  background: #2e3045;
+  border-color: #3a3f55;
+}
+input[type='checkbox'].cb:checked {
+  background: #009ef7;
+  border-color: #009ef7;
+}
+input[type='checkbox'].cb:checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ============ 按钮 ============ */
+.btn {
+  transition: all 0.15s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary:hover {
+  background: #0095e8;
+  box-shadow: 0 6px 16px rgba(0, 158, 247, 0.3);
+}
+.btn-success:hover {
+  background: #3bbf7c;
+}
+.btn-danger:hover {
+  background: #d6325a;
+}
+.btn-ghost:hover {
+  background: rgba(0, 158, 247, 0.06);
+}
+
+/* ============ 卡片 hover ============ */
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.dark .stat-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ============ 时间数字 ============ */
+.clock-digit {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ 折叠态 sidebar ============ */
+.sidebar-collapsed {
+  width: 76px !important;
+}
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .nav-section-title,
+.sidebar-collapsed .nav-badge,
+.sidebar-collapsed .sidebar-footer {
+  display: none !important;
+}
+.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.sidebar-collapsed .nav-arrow {
+  display: none !important;
+}
+
+/* ============ 脉冲指示器 ============ */
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: inherit;
+  animation: pulse 1.8s ease-out infinite;
+  opacity: 0.6;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* ============ 头像渐变 ============ */
+.avatar-gradient {
+  background: linear-gradient(135deg, #009ef7 0%, #7c3aed 100%);
+}
+
+/* ============ 趋势条 ============ */
+.spark-bar {
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============ 表格 sticky header ============ */
+.table-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* ============ 空状态 ============ */
+.empty-illus {
+  background: radial-gradient(circle at center, rgba(0, 158, 247, 0.08) 0%, transparent 70%);
+}
+
+/* ============ 通用过渡 ============ */
+.theme-transition * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+
+/* ============ 登录页：星空流光 ============ */
+.brand-canvas {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(38, 187, 247, 0.35) 0%, transparent 35%),
+    radial-gradient(circle at 80% 70%, rgba(124, 58, 237, 0.3) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0, 158, 247, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, #0b0f1e 0%, #131a33 50%, #0e1530 100%);
+}
+.brand-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #ffffff 50%, transparent),
+    radial-gradient(1px 1px at 40% 70%, #ffffff 50%, transparent),
+    radial-gradient(1px 1px at 60% 20%, #ffffff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 80% 50%, #ffffff 50%, transparent),
+    radial-gradient(1px 1px at 30% 90%, #ffffff 50%, transparent),
+    radial-gradient(1px 1px at 70% 80%, #ffffff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 15% 60%, #ffffff 50%, transparent),
+    radial-gradient(1px 1px at 90% 15%, #ffffff 50%, transparent);
+  opacity: 0.55;
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.75;
+  }
+}
+.aurora {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    rgba(0, 158, 247, 0.18) 60deg,
+    transparent 120deg,
+    rgba(124, 58, 237, 0.18) 200deg,
+    transparent 280deg
+  );
+  filter: blur(60px);
+  animation: spin 22s linear infinite;
+  opacity: 0.7;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.orbit {
+  position: absolute;
+  border-radius: 9999px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+.orbit-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #26bbf7;
+  box-shadow: 0 0 12px rgba(38, 187, 247, 0.8);
+}
+
+/* ============ 登录表单交互 ============ */
+.field-input {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.field-input:focus {
+  border-color: #009ef7;
+  box-shadow: 0 0 0 4px rgba(0, 158, 247, 0.12);
+}
+.btn-primary {
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.btn-primary:hover {
+  background-color: #0095e8;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 158, 247, 0.35);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.fade-in {
+  animation: fadeIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.shake {
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}

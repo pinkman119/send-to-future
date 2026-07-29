@@ -7,6 +7,8 @@ import { LangchainModule } from './langchain/langchain.module';
 import { WechatModule } from './wechat/wechat.module';
 import { AuthModule } from './auth/auth.module';
 import { CoordModule } from './coord/coord.module';
+import { LetterModule } from './letter/letter.module';
+import { PayModule } from './pay/pay.module';
 import { RedisModule } from './redis/redis.module';
 import { isProd } from './common/env.util';
 
@@ -22,6 +24,8 @@ import { isProd } from './common/env.util';
     WechatModule,
     AuthModule,
     CoordModule,
+    LetterModule,
+    PayModule,
   ],
   controllers: [AppController],
   providers: [AppService],

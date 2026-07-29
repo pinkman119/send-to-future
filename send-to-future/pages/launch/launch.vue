@@ -124,7 +124,7 @@
       </view>
     </view>
 
-    <view class="section" v-if="!current.launchOnlyMode">
+    <view class="section">
       <view class="section-label">TIMING</view>
       <view class="section-title">设定送达时间</view>
       <view class="section-desc">选择 1年 / 3年 / 10年后，或自定义一个送达日期</view>
@@ -140,30 +140,16 @@
           <view class="time-unit">年后</view>
           <view class="time-date">{{ getFutureDate(year) }}</view>
         </view>
-        <!-- 自定义 -->
+        <!-- 自定义：点击弹出日期选择组件 -->
         <view
-          v-if="!current.selectedChannel"
           class="time-card"
-          @click="showToast('请先选择送达方式哦 ~')"
+          :class="{ selected: !!current.customDate }"
+          @click="openDatePicker"
         >
           <view class="time-num grad" style="font-size:17px;">自定义</view>
           <view class="time-unit">送达</view>
-          <view class="time-date">需先选渠道</view>
+          <view class="time-date">{{ current.customDate || customDateHint }}</view>
         </view>
-        <picker
-          v-else
-          mode="date"
-          :start="customMinDate"
-          :end="customMaxDate"
-          :value="customPickerValue"
-          @change="onCustomDateChange"
-        >
-          <view class="time-card" :class="{ selected: !!current.customDate }">
-            <view class="time-num grad" style="font-size:17px;">自定义</view>
-            <view class="time-unit">送达</view>
-            <view class="time-date">{{ current.customDate || customDateHint }}</view>
-          </view>
-        </picker>
       </view>
     </view>
 
@@ -287,6 +273,51 @@
       </view>
     </view>
 
+    <!-- Custom Date Picker Popup -->
+    <view class="date-popup-overlay" v-if="showDatePicker" @click="closeDatePicker" @touchmove.stop.prevent="noop">
+      <view class="date-popup-mask" @click="closeDatePicker"></view>
+      <view class="date-popup" @click.stop="noop" @touchmove.stop>
+        <view class="date-popup-header">
+          <view>
+            <view class="date-popup-title">选择送达日期</view>
+            <view class="date-popup-sub">仅可选择的范围内日期可选</view>
+          </view>
+          <button class="date-popup-close" @click="closeDatePicker">✕</button>
+        </view>
+        <view class="date-picker-cols">
+          <scroll-view scroll-y class="date-col">
+            <view
+              class="date-opt"
+              v-for="y in pickerYearList"
+              :key="'y' + y"
+              :class="{ active: pickerYear === y }"
+              @click="onPickerYear(y)"
+            >{{ y }} 年</view>
+          </scroll-view>
+          <scroll-view scroll-y class="date-col">
+            <view
+              class="date-opt"
+              v-for="m in pickerMonthList"
+              :key="'m' + m"
+              :class="{ active: pickerMonth === m }"
+              @click="onPickerMonth(m)"
+            >{{ m }} 月</view>
+          </scroll-view>
+          <scroll-view scroll-y class="date-col">
+            <view
+              class="date-opt"
+              v-for="d in pickerDayList"
+              :key="'d' + d"
+              :class="{ active: pickerDay === d }"
+              @click="onPickerDay(d)"
+            >{{ d }} 日</view>
+          </scroll-view>
+        </view>
+        <view class="date-picker-preview">已选：{{ pickerYear }}.{{ String(pickerMonth).padStart(2, '0') }}.{{ String(pickerDay).padStart(2, '0') }}</view>
+        <button class="date-confirm-btn" @click="confirmCustomDate">确认送达日期</button>
+      </view>
+    </view>
+
     <!-- Toast -->
     <view class="toast" v-if="toastMsg" :style="{ opacity: toastOpacity }">{{ toastMsg }}</view>
 
@@ -294,6 +325,8 @@
 </template>
 
 <script>
+import { get, post } from '@/uni-app/utils/request.js';
+
 const channelNames = { mail: '手写信件', qqmail: 'QQ邮箱', sms: '短信推送', unbreakable: '牢不可破的誓言' };
 const channelFieldMap = {
   mail: [{ key: 'address', icon: '📮', label: '对方邮寄地址', placeholder: '请输入对方邮寄地址', required: true }],
@@ -354,6 +387,7 @@ export default {
       coordFields: [],
       coordFieldValues: {},
       coordExtraContacts: [],
+      coordFieldCoordId: { phone: null, email: null, address: null },
       toastMsg: '',
       toastOpacity: 1,
       toastTimer: null,
@@ -363,6 +397,11 @@ export default {
       igniting: false,
       igniteStyle: '',
       igniteProgress: 0,
+      draftTimer: null,
+      showDatePicker: false,
+      pickerYear: 0,
+      pickerMonth: 0,
+      pickerDay: 0,
     };
   },
   computed: {
@@ -381,38 +420,72 @@ export default {
       return [1, 3, 10];
     },
     /**
-     * 自定义日期最早可选范围：根据所选送达渠道而定
+     * 自定义日期最早可选范围（ISO 字符串）：仅发射模式为明天，其余按渠道而定
      * @returns {string} ISO 格式日期
      */
     customMinDate() {
-      const ch = this.current.selectedChannel;
-      let addDays = 1;
-      if (ch === 'mail' || ch === 'unbreakable') addDays = 30;
-      else if (ch === 'sms') addDays = 7;
-      else if (ch === 'qqmail') addDays = 1;
-      else addDays = 1; // 默认（理论上需先选渠道）
-      const d = new Date();
-      d.setDate(d.getDate() + addDays);
-      return this.formatDateISO(d);
+      return this.formatDateISO(this.minDeliveryDate());
     },
     /**
-     * 自定义日期最晚可选范围（当前年份 +100 年）
+     * 自定义日期最晚可选范围（ISO 字符串，当前年份 +100 年）
      * @returns {string} ISO 格式日期
      */
     customMaxDate() {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() + 100);
-      return this.formatDateISO(d);
+      return this.formatDateISO(this.dateMaxDate);
     },
     /**
-     * 自定义日期选择器的初始值
-     * @returns {string} ISO 格式日期
+     * 自定义日期最晚可选日期（Date 对象，当前年份 +100 年）
+     * @returns {Date} 最大可选日期
      */
-    customPickerValue() {
-      if (this.current.customDate) {
-        return this.formatDateISO(this.parseDotDate(this.current.customDate));
-      }
-      return this.customMinDate;
+    dateMaxDate() {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 100);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    },
+    /**
+     * 自定义日期选择器可选年份列表（受 min/max 约束）
+     * @returns {Array<number>} 年份数组
+     */
+    pickerYearList() {
+      const minY = this.minDeliveryDate().getFullYear();
+      const maxY = this.dateMaxDate.getFullYear();
+      const list = [];
+      for (let y = minY; y <= maxY; y++) list.push(y);
+      return list;
+    },
+    /**
+     * 自定义日期选择器可选月份列表（依据当前所选年份与 min/max 收窄）
+     * @returns {Array<number>} 月份数组
+     */
+    pickerMonthList() {
+      const min = this.minDeliveryDate();
+      const max = this.dateMaxDate;
+      const y = this.pickerYear;
+      let start = 1;
+      let end = 12;
+      if (y === min.getFullYear()) start = min.getMonth() + 1;
+      if (y === max.getFullYear()) end = max.getMonth() + 1;
+      const list = [];
+      for (let m = start; m <= end; m++) list.push(m);
+      return list;
+    },
+    /**
+     * 自定义日期选择器可选日列表（依据当前所选年/月与 min/max 收窄）
+     * @returns {Array<number>} 日数组
+     */
+    pickerDayList() {
+      const min = this.minDeliveryDate();
+      const max = this.dateMaxDate;
+      const y = this.pickerYear;
+      const m = this.pickerMonth;
+      let start = 1;
+      let end = this.daysInMonth(y, m);
+      if (y === min.getFullYear() && m === min.getMonth() + 1) start = min.getDate();
+      if (y === max.getFullYear() && m === max.getMonth() + 1) end = max.getDate();
+      const list = [];
+      for (let d = start; d <= end; d++) list.push(d);
+      return list;
     },
     /**
      * 自定义日期提示文案（将点分日期展示）
@@ -459,6 +532,34 @@ export default {
    */
   mounted() {
     this.currentDate = this.formatDate(new Date());
+  },
+  /**
+   * 页面加载：拉取坐标、回填草稿、启动 30s 自动保存。
+   */
+  onLoad() {
+    this.refreshCoords();
+    this.loadDraft();
+    this.startDraftTimer();
+  },
+  /**
+   * 页面展示：刷新坐标并回填草稿（仅当表单为空，避免覆盖进行中的编辑）。
+   */
+  onShow() {
+    this.refreshCoords();
+    this.loadDraft();
+  },
+  /**
+   * 页面卸载：停止定时器并 best-effort 保存草稿。
+   */
+  onUnload() {
+    this.stopDraftTimer();
+    this.saveDraft();
+  },
+  /**
+   * 页面隐藏：best-effort 保存草稿。
+   */
+  onHide() {
+    this.saveDraft();
   },
   methods: {
     /**
@@ -553,12 +654,98 @@ export default {
       this.current.customDate = null;
     },
     /**
-     * 自定义日期选择器变更回调
-     * @param {object} e - 变更事件
+     * 计算自定义日期的最早可选 Date：仅发射模式为明天，其余按渠道最小提前量。
+     * @returns {Date} 最早可选日期（清零时分秒）
      */
-    onCustomDateChange(e) {
-      this.current.customDate = this.formatDateFromISO(e.detail.value);
+    minDeliveryDate() {
+      const d = new Date();
+      let addDays = 1;
+      if (this.current.launchOnlyMode) {
+        addDays = 1; // 仅发射：明天及之后
+      } else {
+        const ch = this.current.selectedChannel;
+        if (ch === 'mail' || ch === 'unbreakable') addDays = 30;
+        else if (ch === 'sms') addDays = 7;
+        else if (ch === 'qqmail') addDays = 1;
+        else addDays = 1; // 默认（未选渠道）
+      }
+      d.setDate(d.getDate() + addDays);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    },
+    /**
+     * 计算指定年月的天数（自动处理闰年 2 月）
+     * @param {number} year - 年份
+     * @param {number} month - 月份（1-12）
+     * @returns {number} 当月天数
+     */
+    daysInMonth(year, month) {
+      return new Date(year, month, 0).getDate();
+    },
+    /**
+     * 打开自定义日期选择弹层：以已存草稿或最小可选日期初始化年/月/日。
+     */
+    openDatePicker() {
+      let init;
+      if (this.current.customDate) {
+        init = this.parseDotDate(this.current.customDate);
+      } else {
+        init = this.minDeliveryDate();
+      }
+      this.pickerYear = init.getFullYear();
+      this.pickerMonth = init.getMonth() + 1;
+      this.pickerDay = init.getDate();
+      this.clampPicker();
+      this.showDatePicker = true;
+    },
+    /**
+     * 关闭自定义日期选择弹层。
+     */
+    closeDatePicker() {
+      this.showDatePicker = false;
+    },
+    /**
+     * 选择年份后，将月/日收敛回合法范围。
+     * @param {number} y - 年份
+     */
+    onPickerYear(y) {
+      this.pickerYear = y;
+      this.clampPicker();
+    },
+    /**
+     * 选择月份后，将日收敛回合法范围。
+     * @param {number} m - 月份
+     */
+    onPickerMonth(m) {
+      this.pickerMonth = m;
+      this.clampPicker();
+    },
+    /**
+     * 选择日。
+     * @param {number} d - 日
+     */
+    onPickerDay(d) {
+      this.pickerDay = d;
+    },
+    /**
+     * 依据 min/max 约束，将 pickerMonth / pickerDay 收敛到当前年/月下的合法选项。
+     */
+    clampPicker() {
+      const months = this.pickerMonthList;
+      if (!months.includes(this.pickerMonth)) this.pickerMonth = months[0];
+      const days = this.pickerDayList;
+      if (!days.includes(this.pickerDay)) this.pickerDay = days[0];
+    },
+    /**
+     * 确认自定义日期：写回 current.customDate 并清掉预设年限，关闭弹层。
+     */
+    confirmCustomDate() {
+      const y = this.pickerYear;
+      const m = String(this.pickerMonth).padStart(2, '0');
+      const d = String(this.pickerDay).padStart(2, '0');
+      this.current.customDate = `${y}.${m}.${d}`;
       this.current.selectedYears = null;
+      this.showDatePicker = false;
     },
     /**
      * 切换信件公开/加密状态并提示
@@ -712,6 +899,10 @@ export default {
     handleLaunch() {
       if (!this.current.letterContent.trim()) { this.showToast('请先写下你的信件内容'); return; }
       if (this.current.launchOnlyMode) {
+        if (!this.current.selectedYears && !this.current.customDate) {
+          this.showToast('请选择送达时间');
+          return;
+        }
         this.showCoordPopup = false;
         this.proceedWithLaunch(null, true);
         return;
@@ -727,7 +918,17 @@ export default {
       const fieldValues = {};
       this.coordFields.forEach(f => { fieldValues[f.key] = ''; });
       this.coordFieldValues = fieldValues;
+      this.coordFieldCoordId = {};
       this.coordExtraContacts = [];
+      // 7.4 手写信件地址回填：优先用已保存 address 坐标预填
+      if (this.current.selectedChannel === 'mail') {
+        const myCoords = getApp().globalData.myCoords || [];
+        const addrCoord = myCoords.find(c => c.type === 'address' && c.value);
+        if (addrCoord) {
+          this.coordFieldValues.address = addrCoord.value;
+          this.coordFieldCoordId.address = addrCoord.id || null;
+        }
+      }
     },
     /**
      * 关闭坐标填写弹窗
@@ -742,6 +943,7 @@ export default {
     fillFromSavedCoord(c) {
       const fieldKey = this.coordTypeToFieldKey(c.type);
       this.coordFieldValues[fieldKey] = c.value;
+      this.coordFieldCoordId[fieldKey] = c.id || null;
       this.showToast(`已填入：${c.value}`);
     },
     /**
@@ -767,14 +969,19 @@ export default {
 
       for (const f of this.coordFields) {
         const val = (this.coordFieldValues[f.key] || '').trim();
-        if (f.required && !val) {
+        const coordId = this.coordFieldCoordId[f.key];
+        if (f.required && !val && !coordId) {
           valid = false;
           missingLabels.push(f.label);
         }
-        if (val) contacts[f.key] = val;
+        if (coordId) {
+          contacts[f.key] = { coordId };
+        } else if (val) {
+          contacts[f.key] = { value: val };
+        }
       }
       this.coordExtraContacts.forEach((val, idx) => {
-        if (val.trim()) contacts['contactExtra' + (idx + 1)] = val.trim();
+        if (val && val.trim()) contacts['contactExtra' + (idx + 1)] = val.trim();
       });
 
       if (!valid) {
@@ -782,106 +989,100 @@ export default {
         return;
       }
 
-      this.showCoordPopup = false;
-      const payPrice = this.priceMap[this.current.selectedChannel] || 0;
-      if (payPrice > 0) {
-        this.simulateWechatPay(payPrice, contacts);
-      } else {
-        this.proceedWithLaunch(contacts);
+      // 7.5 牢不可破的誓言前端基础校验（最终以服务端为准）
+      if (this.isUnbreakableChannel) {
+        const phoneVal = contacts.phone && contacts.phone.value
+          ? contacts.phone.value
+          : (this.coordFieldValues.phone || '');
+        const emailVal = contacts.email && contacts.email.value
+          ? contacts.email.value
+          : (this.coordFieldValues.email || '');
+        if (phoneVal && !/^1[3-9]\d{9}$/.test(phoneVal)) {
+          this.showToast('手机号格式不正确，请填写 11 位中国大陆手机号');
+          return;
+        }
+        if (emailVal && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(emailVal)) {
+          this.showToast('邮箱格式不正确，请检查后重新填写');
+          return;
+        }
       }
+
+      this.showCoordPopup = false;
+      this.proceedWithLaunch(contacts, false);
     },
     /**
-     * 模拟微信支付，支付成功后继续发射（真实环境调用 uni.requestPayment）
-     * @param {number} price - 金额
-     * @param {object} contacts - 联络信息
-     */
-    simulateWechatPay(price, contacts) {
-      this.showToast(`💳 正在发起微信支付\n ${price.toFixed(2)}`);
-      // 真实环境调用 uni.requestPayment({ provider: 'wxpay', ... }) 完成支付
-      setTimeout(() => {
-        this.showToast(`✅ 微信支付成功\n¥ ${price.toFixed(2)}`);
-        this.proceedWithLaunch(contacts);
-      }, 1200);
-    },
-    /**
-     * 真正执行发射：组装信件、写入 globalData 并播放成功动画
-     * @param {object|null} contacts - 联络信息（仅发射模式为 null）
+     * 真正执行发射：组装请求体调用后端 /letter/launch，
+     * 免费渠道直接播放成功动画；付费渠道拿到支付参数后调起 uni.requestPayment。
+     * @param {object|null} contacts - 联络信息（coordId / value 引用；仅发射模式为 null）
      * @param {boolean} [isLaunchOnly] - 是否仅发射模式
      */
     proceedWithLaunch(contacts, isLaunchOnly) {
-      const mode = this.mode;
       const content = this.current.letterContent.trim();
       const channel = isLaunchOnly ? 'launch' : this.current.selectedChannel;
-      const isCustom = !isLaunchOnly && !!this.current.customDate;
-      const years = isLaunchOnly ? null : (isCustom ? null : this.current.selectedYears);
       const keyword = this.current.keyword.trim() || '未标记主题';
 
-      let deliveryDate = '';
-      let deliveryDateObj = new Date();
-      if (!isLaunchOnly) {
-        if (isCustom) {
-          deliveryDate = this.current.customDate;
-          deliveryDateObj = this.parseDotDate(deliveryDate);
-        } else {
-          deliveryDate = this.getFutureDate(years);
-          deliveryDateObj.setFullYear(deliveryDateObj.getFullYear() + years);
-        }
-      }
-      const duration = isLaunchOnly ? '' : this.getDateDiff(deliveryDateObj);
-
-      const sentLetter = {
-        id: 'MY' + Date.now(),
+      // 组装发射请求体（字段对齐后端 /letter/launch）
+      const payload = {
+        mode: this.mode,
         content,
         keyword,
-        channel,
-        mode,
-        isEncrypted: this.current.isEncrypted,
-        deliveryContacts: isLaunchOnly ? null : contacts,
-        sentDate: this.formatDate(new Date()),
-        sentTimestamp: Date.now(),
-        deliveryDate,
-        deliveryTimestamp: isLaunchOnly ? 0 : deliveryDateObj.getTime(),
-        years,
-        customDate: isCustom ? deliveryDate : null,
+        channelCode: channel,
+        isPublic: !this.current.isEncrypted,
+        fromName: this.current.from || '',
+        toName: this.current.to || '',
       };
-
-      const app = getApp();
-      if (!app.globalData.mySentLetters) app.globalData.mySentLetters = [];
-      app.globalData.mySentLetters.unshift(sentLetter);
-      app.globalData.saveState();
-
-      this.successDate = deliveryDate || '永久闪耀';
-      this.successChannel = isLaunchOnly ? '仅发射' : channelNames[channel];
-      this.successDuration = isLaunchOnly ? '—' : duration;
-
-      if (isLaunchOnly) {
-        this.successDesc = `你的信已化作星光，融入浩瀚星海\n它将作为一颗星永远闪耀\n不进行任何渠道推送送达`;
-      } else if (channel === 'unbreakable') {
-        const contactCount = contacts ? Object.keys(contacts).length : 0;
-        this.successDesc = `誓言已封印 · ${contactCount}条联络通道已激活\n我们将动用一切手段，层层接力\n确保这封信抵达对方手中`;
-      } else if (channel === 'mail') {
-        this.successDesc = `你的信已化作星光，融入浩瀚星海\n到达之日将亲笔手写邮寄送达\n尽量保证当天寄达，前后不超三天`;
-      } else {
-        this.successDesc = mode === 'someone'
-          ? `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮那个重要的人`
-          : `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮未来的你`;
+      if (this.current.selectedYears) {
+        payload.selectedYears = this.current.selectedYears;
+      } else if (this.current.customDate) {
+        payload.customDate = this.current.customDate.replace(/\./g, '-');
       }
 
-      this.showOverlay = true;
-      this.animationStage = 'stage-1';
-      this.trailActive = false;
-      this.showSuccess = false;
+      // 组装联络信息：phone/email/address 用 coordId 或 value；其余备选联系人归入 extra
+      const launchContacts = {};
+      const extra = [];
+      if (contacts) {
+        for (const f of this.coordFields) {
+          const key = f.key;
+          if (key === 'phone' || key === 'email' || key === 'address') {
+            const coordId = this.coordFieldCoordId[key];
+            const val = (this.coordFieldValues[key] || '').trim();
+            if (coordId) launchContacts[key] = { coordId };
+            else if (val) launchContacts[key] = { value: val };
+          } else {
+            const val = (this.coordFieldValues[key] || '').trim();
+            if (val) extra.push(val);
+          }
+        }
+      }
+      this.coordExtraContacts.forEach((v) => {
+        const s = (v || '').trim();
+        if (s) extra.push(s);
+      });
+      if (extra.length) launchContacts.extra = extra;
+      if (Object.keys(launchContacts).length) payload.contacts = launchContacts;
 
-      setTimeout(() => {
-        this.animationStage = 'stage-2';
-        this.trailActive = true;
-      }, 600);
-      setTimeout(() => {
-        this.animationStage = 'stage-3';
-      }, 1400);
-      setTimeout(() => {
-        this.showSuccess = true;
-      }, 2200);
+      const payPrice = isLaunchOnly ? 0 : (this.priceMap[this.current.selectedChannel] || 0);
+      post('/letter/launch', payload).then((res) => {
+        if (payPrice > 0 && res && res.payParams) {
+          // 7.3 付费渠道：调起微信支付，成功/失败以服务端回调为准
+          uni.requestPayment({
+            provider: 'wxpay',
+            ...res.payParams,
+            success: () => {
+              this.playSuccessAnimation(channel, isLaunchOnly, keyword);
+            },
+            fail: () => {
+              this.showToast('支付未完成，可稍后从草稿重新发射');
+            },
+          });
+        } else {
+          this.playSuccessAnimation(channel, isLaunchOnly, keyword);
+        }
+      }).catch((err) => {
+        console.error('launch failed', err);
+      });
+
+
     },
     /**
      * 关闭发射成功浮层并重置表单
@@ -916,6 +1117,166 @@ export default {
      * 切换寄信模式（self / someone）
      * @param {string} mode - 目标模式
      */
+    /**
+     * 播放发射成功动画：根据渠道与模式计算送达文案并触发逐帧动画。
+     * @param {string} channel - 渠道编码
+     * @param {boolean} isLaunchOnly - 是否仅发射模式
+     * @param {string} keyword - 主题关键词
+     */
+    playSuccessAnimation(channel, isLaunchOnly, keyword) {
+      const deliveryDate = this.current.customDate || (this.current.selectedYears ? this.getFutureDate(this.current.selectedYears) : '');
+      const deliveryDateObj = this.current.customDate
+        ? this.parseDotDate(this.current.customDate)
+        : new Date(Date.now() + (this.current.selectedYears || 0) * 365 * 86400000);
+      const duration = deliveryDate ? this.getDateDiff(deliveryDateObj) : '—';
+
+      this.successDate = deliveryDate || '永久闪耀';
+      this.successChannel = isLaunchOnly ? '仅发射' : channelNames[channel];
+      this.successDuration = duration;
+
+      if (isLaunchOnly) {
+        this.successDesc = `你的信已化作星光，融入浩瀚星海\n它将作为一颗星永远闪耀\n不进行任何渠道推送送达`;
+      } else if (channel === 'unbreakable') {
+        const contactCount =
+          (this.coordFieldValues.phone ? 1 : 0) +
+          (this.coordFieldValues.email ? 1 : 0) +
+          (this.coordFieldValues.address ? 1 : 0);
+        this.successDesc = `誓言已封印 · ${contactCount}条联络通道已激活\n我们将动用一切手段，层层接力\n确保这封信抵达对方手中`;
+      } else if (channel === 'mail') {
+        this.successDesc = `你的信已化作星光，融入浩瀚星海\n到达之日将亲笔手写邮寄送达\n尽量保证当天寄达，前后不超三天`;
+      } else {
+        this.successDesc = this.mode === 'someone'
+          ? `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮那个重要的人`
+          : `你的信已化作星光，融入浩瀚星海\n它将在指定日期，照亮未来的你`;
+      }
+
+      this.showOverlay = true;
+      this.animationStage = 'stage-1';
+      this.trailActive = false;
+      this.showSuccess = false;
+
+      setTimeout(() => {
+        this.animationStage = 'stage-2';
+        this.trailActive = true;
+      }, 600);
+      setTimeout(() => {
+        this.animationStage = 'stage-3';
+      }, 1400);
+      setTimeout(() => {
+        this.showSuccess = true;
+      }, 2200);
+    },
+    /**
+     * 从后端拉取当前用户坐标列表，写入 globalData.myCoords 供坐标选择器使用。
+     */
+    refreshCoords() {
+      get('/coord').then((list) => {
+        if (Array.isArray(list)) {
+          getApp().globalData.myCoords = list.map((c) => ({
+            id: c.coordId, type: c.coordType, value: c.coordValue,
+          }));
+        }
+      }).catch(() => {});
+    },
+    /**
+     * 读取并回填发射草稿（仅当当前表单为空时，避免覆盖进行中的编辑）。
+     */
+    loadDraft() {
+      get('/letter/draft').then((draft) => {
+        if (!draft) return;
+        if (this.current.letterContent && this.current.letterContent.trim()) return;
+        this.applyDraft(draft);
+      }).catch(() => {});
+    },
+    /**
+     * 将草稿行回填到当前编辑表单。
+     * @param {object} draft - 后端返回的草稿行
+     */
+    applyDraft(draft) {
+      const mode = draft.mode === 1 ? 'someone' : 'self';
+      this.mode = mode;
+      const target = this[mode];
+      target.letterContent = draft.content || '';
+      target.keyword = draft.keyword || '';
+      target.selectedChannel = draft.channel_code || '';
+      target.selectedYears = draft.selected_years != null ? draft.selected_years : null;
+      target.customDate = draft.custom_date ? this.formatDateFromISO(draft.custom_date) : null;
+      target.isEncrypted = draft.is_public === false;
+      target.from = draft.from_name || '';
+      target.to = draft.to_name || '';
+      this.coordFieldValues = {
+        phone: draft.contact_phone || '',
+        email: draft.contact_email || '',
+        address: draft.contact_address || '',
+      };
+      this.coordFieldCoordId = {};
+      this.coordExtraContacts = (draft.extra_contacts && Array.isArray(draft.extra_contacts))
+        ? draft.extra_contacts.slice()
+        : [];
+    },
+    /**
+     * 判断当前信件表单是否为空（用户未输入任何内容）。
+     * 仅当信件正文/关键词、送达渠道、送达时间、寄/收件人、联络信息均为空时才返回 true。
+     * @returns {boolean} 表单为空返回 true，否则 false
+     */
+    isFormEmpty() {
+      const c = this.current;
+      const hasText = !!(c.letterContent && c.letterContent.trim()) || !!(c.keyword && c.keyword.trim());
+      const hasChannel = !!c.selectedChannel;
+      const hasTime = !!c.selectedYears || !!c.customDate;
+      const hasNames = !!(c.from && c.from.trim()) || !!(c.to && c.to.trim());
+      const hasContacts =
+        !!(this.coordFieldValues.phone && this.coordFieldValues.phone.trim()) ||
+        !!(this.coordFieldValues.email && this.coordFieldValues.email.trim()) ||
+        !!(this.coordFieldValues.address && this.coordFieldValues.address.trim()) ||
+        (this.coordExtraContacts || []).some((v) => v && v.trim());
+      return !(hasText || hasChannel || hasTime || hasNames || hasContacts);
+    },
+    /**
+     * 将当前表单序列化并保存到后端草稿（upsert）。
+     * 整个信件表单为空时不调用后端接口，避免写入空草稿。
+     * @returns {Promise<any>} 保存请求 Promise
+     */
+    saveDraft() {
+      if (this.isFormEmpty()) return Promise.resolve();
+      const c = this.current;
+      const payload = {
+        mode: this.mode,
+        content: c.letterContent,
+        keyword: c.keyword,
+        channelCode: c.selectedChannel,
+        isPublic: !c.isEncrypted,
+        selectedYears: c.selectedYears,
+        customDate: c.customDate ? c.customDate.replace(/\./g, '-') : null,
+        fromName: c.from,
+        toName: c.to,
+        contactPhone: this.coordFieldValues.phone || '',
+        contactEmail: this.coordFieldValues.email || '',
+        contactAddress: this.coordFieldValues.address || '',
+        extraContacts: this.coordExtraContacts,
+      };
+      return post('/letter/draft', payload).catch((err) => {
+        console.warn('保存草稿失败', err);
+      });
+    },
+    /**
+     * 启动 30s 定时保存草稿。
+     */
+    startDraftTimer() {
+      this.stopDraftTimer();
+      this.draftTimer = setInterval(() => {
+        this.saveDraft();
+      }, 30000);
+    },
+    /**
+     * 停止 30s 定时保存草稿。
+     */
+    stopDraftTimer() {
+      if (this.draftTimer) {
+        clearInterval(this.draftTimer);
+        this.draftTimer = null;
+      }
+    },
     setMode(mode) {
       this.mode = mode;
     },
@@ -1233,6 +1594,63 @@ export default {
 }
 .coord-confirm-btn:active { transform:scale(.97); }
 .coord-confirm-btn.unbreakable { background:linear-gradient(135deg,var(--pink),var(--purple)); }
+
+/* Custom Date Picker Popup */
+.date-popup-overlay {
+  position:fixed; inset:0; z-index:99997;
+  display:flex; align-items:flex-end; justify-content:center;
+  animation:pageIn .3s ease;
+}
+.date-popup-mask {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.65); backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.date-popup {
+  position:relative; z-index:1;
+  width:100%; max-width:420px;
+  background:linear-gradient(180deg,var(--bg-mid) 0%,var(--bg-deep) 100%);
+  border:1px solid var(--glass-bd); border-radius:24px 24px 0 0;
+  padding:24px 20px calc(20px + env(safe-area-inset-bottom));
+  animation:coordSlideUp .35s cubic-bezier(.16,1,.3,1);
+}
+.date-popup-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.date-popup-title { font-size:20px; font-weight:700; }
+.date-popup-sub { font-size:12px; color:var(--text-2); margin-top:2px; }
+.date-popup-close {
+  width:32px; height:32px; border-radius:10px; flex-shrink:0;
+  border:1px solid var(--glass-bd); background:var(--glass);
+  color:var(--text-2); font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; line-height:1; padding:0;
+  transition:all .25s;
+}
+.date-popup-close:active { transform:scale(.95); }
+.date-picker-cols { display:flex; gap:8px; margin-top:18px; height:220px; }
+.date-col {
+  flex:1; height:100%; border-radius:12px;
+  border:1px solid var(--glass-bd); background:rgba(0,0,0,.2);
+  text-align:center;
+}
+.date-opt {
+  padding:12px 4px; font-size:15px; color:var(--text-2);
+  border-bottom:1px solid rgba(255,255,255,.04); transition:all .2s;
+}
+.date-opt.active {
+  color:#fff; font-weight:700; font-size:16px;
+  background:linear-gradient(135deg,rgba(0,229,255,.16),rgba(168,85,247,.16));
+  box-shadow:inset 0 0 0 1px rgba(0,229,255,.4);
+}
+.date-picker-preview {
+  margin-top:14px; text-align:center; font-size:13px; color:var(--cyan);
+  font-family:'SF Mono',monospace; letter-spacing:1px;
+}
+.date-confirm-btn {
+  margin-top:16px; width:100%; padding:14px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#fff;
+  font-size:15px; font-weight:700; cursor:pointer; transition:all .25s;
+  display:flex; align-items:center; justify-content:center;
+}
+.date-confirm-btn:active { transform:scale(.97); }
 
 /* Time Grid */
 .time-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; }

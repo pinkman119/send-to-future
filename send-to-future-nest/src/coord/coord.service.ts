@@ -135,6 +135,68 @@ export class CoordService {
   }
 
   /**
+   * 解析或自动建档一个坐标并取其值：优先按 coordId 复用本人坐标，
+   * 否则按原始 value 在「同用户 + 同类型 + 同值」下查重，不存在则调用既有创建逻辑建档。
+   * 用于发射流程复用/沉淀用户送达联络信息。
+   * @async
+   * @param {bigint} userId - 当前登录用户 ID
+   * @param {string} coordType - 坐标类型（phone/email/address/wechat）
+   * @param {object} ref - 坐标引用，二选一：coordId 或 value
+   * @param {string} [ref.coordId] - 已存在坐标 ID（须归属本人且类型匹配）
+   * @param {string} [ref.value] - 原始坐标值（将按类型校验，缺失则自动建档）
+   * @returns {Promise<{ coordId: string; value: string }>} 解析后的坐标 ID 与真实值
+   * @throws {BadRequestException} 既未提供 coordId 也未提供 value，或 coordId 非法/非本人/类型不匹配时抛出
+   * @throws {NotFoundException} coordId 对应的坐标不存在时抛出
+   */
+  async resolveCoordValue(
+    userId: bigint,
+    coordType: string,
+    ref: { coordId?: string; value?: string },
+  ): Promise<{ coordId: string; value: string }> {
+    // 1) 优先按 coordId 复用本人坐标
+    if (ref.coordId && ref.coordId.trim()) {
+      let coordId: bigint;
+      try {
+        coordId = BigInt(ref.coordId);
+      } catch {
+        throw new BadRequestException('坐标 ID 格式不合法');
+      }
+      const existing = await this.prisma.userCoord.findFirst({
+        where: { coord_id: coordId, delete_time: null },
+      });
+      if (!existing) {
+        throw new NotFoundException('坐标不存在');
+      }
+      if (existing.user_id !== userId) {
+        throw new BadRequestException('坐标不属于当前用户');
+      }
+      if (existing.coord_type !== coordType) {
+        throw new BadRequestException(`坐标类型不匹配，期望 ${coordType}`);
+      }
+      return { coordId: existing.coord_id.toString(), value: existing.coord_value };
+    }
+    // 2) 按原始 value：先查重，缺失则自动建档（复用既有类型/值校验）
+    const value = (ref.value ?? '').trim();
+    if (!value) {
+      throw new BadRequestException('坐标值不能为空');
+    }
+    this.validateCoordValue(coordType, value);
+    const dup = await this.prisma.userCoord.findFirst({
+      where: {
+        user_id: userId,
+        coord_type: coordType,
+        coord_value: value,
+        delete_time: null,
+      },
+    });
+    if (dup) {
+      return { coordId: dup.coord_id.toString(), value: dup.coord_value };
+    }
+    const created = await this.createCoord(userId, { coordType, coordValue: value });
+    return { coordId: created.coordId, value: created.coordValue };
+  }
+
+  /**
    * 校验坐标类型是否在允许枚举内。
    * @param {string} type - 坐标类型
    * @throws {BadRequestException} 类型不合法时抛出（含中文提示）
